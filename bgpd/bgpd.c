@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* BGP-4, BGP-4+ daemon program
    Copyright (C) 1996, 97, 98, 99, 2000 Kunihiro Ishiguro
 
@@ -746,7 +741,7 @@ peer_free (struct peer *peer)
   
   if (peer->notify.data)
     XFREE(MTYPE_TMP, peer->notify.data);
-
+  
   bgp_sync_delete (peer);
   memset (peer, 0, sizeof (struct peer));
   

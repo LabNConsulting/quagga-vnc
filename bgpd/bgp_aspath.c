@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* AS path management routines.
    Copyright (C) 1996, 97, 98, 99 Kunihiro Ishiguro
    Copyright (C) 2005 Sun Microsystems, Inc.
@@ -106,7 +101,7 @@ assegment_data_new (int num)
 static void
 assegment_data_free (as_t *asdata)
 {
-  XFREE (MTYPE_AS_SEG_DATA,asdata);
+  XFREE (MTYPE_AS_SEG_DATA, asdata);
 }
 
 /* Get a new segment. Note that 0 is an allowed length,
@@ -224,7 +219,7 @@ assegment_prepend_asns (struct assegment *seg, as_t asnum, int num)
     newas[i] = asnum;
 
   memcpy (newas + num, seg->as, ASSEGMENT_DATA_SIZE (seg->length, 1));
-  XFREE (MTYPE_AS_SEG_DATA, seg->as);
+  assegment_data_free (seg->as);
   seg->as = newas;
   seg->length += num;
 

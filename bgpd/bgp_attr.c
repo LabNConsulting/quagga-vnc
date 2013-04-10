@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* BGP attributes management routines.
    Copyright (C) 1996, 97, 98, 1999 Kunihiro Ishiguro
 
@@ -578,10 +573,10 @@ attrhash_init (void)
  * special for hash_clean below
  */
 static void
-attr_vfree(void *attr)
+attr_vfree (void *attr)
 {
-    bgp_attr_extra_free((struct attr *)attr);
-    XFREE (MTYPE_ATTR, attr);
+  bgp_attr_extra_free ((struct attr *)attr);
+  XFREE (MTYPE_ATTR, attr);
 }
 
 static void

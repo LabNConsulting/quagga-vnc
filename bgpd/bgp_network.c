@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* BGP network related fucntions
    Copyright (C) 1999 Kunihiro Ishiguro
 
@@ -294,14 +289,14 @@ bgp_bind (struct peer *peer)
   ret = setsockopt (peer->fd, SOL_SOCKET, SO_BINDTODEVICE, 
 		    &ifreq, sizeof (ifreq));
   myerrno = errno;
-
+  
   if (bgpd_privs.change (ZPRIVS_LOWER) )
     zlog_err ("bgp_bind: could not lower privs");
 
   if (ret < 0)
     {
       zlog (peer->log, LOG_INFO, "bind to interface %s failed, errno=%d",
-	peer->ifname, myerrno);
+            peer->ifname, myerrno);
       return ret;
     }
 #endif /* SO_BINDTODEVICE */
