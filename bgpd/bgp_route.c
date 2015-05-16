@@ -3058,8 +3058,7 @@ bgp_clear_route (struct peer *peer, afi_t afi, safi_t safi,
    * unlock happens at the end of this function.
    */
   if (!peer->clear_node_queue->thread)
-    peer_lock (peer);
-
+    peer_lock (peer); /* bgp_clear_node_complete */
   switch (purpose)
     {
     case BGP_CLEAR_ROUTE_NORMAL:
@@ -7732,6 +7731,7 @@ DEFUN (show_bgp_ipv4_safi_flap_regexp,
        "show bgp ipv4 (encap|multicast|unicast|vpn) flap-statistics regexp .LINE",
        SHOW_STR
        BGP_STR
+       IP_STR
        "Address Family Modifier\n"
        "Address Family Modifier\n"
        "Address Family Modifier\n"
@@ -7749,12 +7749,29 @@ DEFUN (show_bgp_ipv4_safi_flap_regexp,
     return bgp_show_regexp (vty, argc-1, argv+1, AFI_IP, safi,
 	bgp_show_type_flap_regexp);
 }
+
+ALIAS (show_bgp_ipv4_safi_flap_regexp,
+       show_bgp_ipv4_safi_damp_flap_regexp_cmd,
+       "show bgp ipv4 (encap|multicast|unicast|vpn) dampening flap-statistics regexp .LINE",
+       SHOW_STR
+       BGP_STR
+       IP_STR
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "Display routes matching the AS path regular expression\n"
+       "A regular-expression to match the BGP AS paths\n")
+
 #ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_flap_regexp,
        show_bgp_ipv6_safi_flap_regexp_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) flap-statistics regexp .LINE",
        SHOW_STR
        BGP_STR
+       IPV6_STR
        "Address Family Modifier\n"
        "Address Family Modifier\n"
        "Address Family Modifier\n"
@@ -7772,6 +7789,21 @@ DEFUN (show_bgp_ipv6_safi_flap_regexp,
     return bgp_show_regexp (vty, argc-1, argv+1, AFI_IP6, safi,
 	bgp_show_type_flap_regexp);
 }
+
+ALIAS (show_bgp_ipv6_safi_flap_regexp,
+       show_bgp_ipv6_safi_damp_flap_regexp_cmd,
+       "show bgp ipv6 (encap|multicast|unicast|vpn) dampening flap-statistics regexp .LINE",
+       SHOW_STR
+       BGP_STR
+       IPV6_STR
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "Display routes matching the AS path regular expression\n"
+       "A regular-expression to match the BGP AS paths\n")
 #endif
 
 DEFUN (show_bgp_ipv4_safi_regexp, 
@@ -7870,6 +7902,7 @@ DEFUN (show_bgp_ipv4_safi_flap_prefix_list,
        "show bgp ipv4 (encap|multicast|unicast|vpn) flap-statistics prefix-list WORD",
        SHOW_STR
        BGP_STR
+       IP_STR
        "Address Family Modifier\n"
        "Address Family Modifier\n"
        "Address Family Modifier\n"
@@ -7886,12 +7919,29 @@ DEFUN (show_bgp_ipv4_safi_flap_prefix_list,
   return bgp_show_prefix_list (vty, argv[1], AFI_IP, safi,
 			       bgp_show_type_flap_prefix_list);
 }
+
+ALIAS (show_bgp_ipv4_safi_flap_prefix_list, 
+       show_bgp_ipv4_safi_damp_flap_prefix_list_cmd,
+       "show bgp ipv4 (encap|multicast|unicast|vpn) dampening flap-statistics prefix-list WORD",
+       SHOW_STR
+       BGP_STR
+       IP_STR
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "Display routes conforming to the prefix-list\n"
+       "IP prefix-list name\n")
+
 #ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_flap_prefix_list, 
        show_bgp_ipv6_safi_flap_prefix_list_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) flap-statistics prefix-list WORD",
        SHOW_STR
        BGP_STR
+       IPV6_STR
        "Address Family Modifier\n"
        "Address Family Modifier\n"
        "Address Family Modifier\n"
@@ -7908,6 +7958,20 @@ DEFUN (show_bgp_ipv6_safi_flap_prefix_list,
   return bgp_show_prefix_list (vty, argv[1], AFI_IP6, safi,
 			       bgp_show_type_flap_prefix_list);
 }
+ALIAS (show_bgp_ipv6_safi_flap_prefix_list, 
+       show_bgp_ipv6_safi_damp_flap_prefix_list_cmd,
+       "show bgp ipv6 (encap|multicast|unicast|vpn) dampening flap-statistics prefix-list WORD",
+       SHOW_STR
+       BGP_STR
+       IPV6_STR
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "Display routes conforming to the prefix-list\n"
+       "IP prefix-list name\n")
 #endif
 
 DEFUN (show_bgp_ipv4_safi_prefix_list, 
@@ -8003,6 +8067,7 @@ DEFUN (show_bgp_ipv4_safi_flap_filter_list,
        "show bgp ipv4 (encap|multicast|unicast|vpn) flap-statistics filter-list WORD",
        SHOW_STR
        BGP_STR
+       IP_STR
        "Address Family modifier\n"
        "Address Family modifier\n"
        "Address Family modifier\n"
@@ -8020,12 +8085,29 @@ DEFUN (show_bgp_ipv4_safi_flap_filter_list,
   return bgp_show_filter_list (vty, argv[1], AFI_IP, safi,
 			       bgp_show_type_flap_filter_list);
 }
+
+ALIAS (show_bgp_ipv4_safi_flap_filter_list, 
+       show_bgp_ipv4_safi_damp_flap_filter_list_cmd,
+       "show bgp ipv4 (encap|multicast|unicast|vpn) dampening flap-statistics filter-list WORD",
+       SHOW_STR
+       BGP_STR
+       IP_STR
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "Display routes conforming to the filter-list\n"
+       "Regular expression access list name\n")
+
 #ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_flap_filter_list, 
        show_bgp_ipv6_safi_flap_filter_list_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) flap-statistics filter-list WORD",
        SHOW_STR
        BGP_STR
+       IPV6_STR
        "Address Family modifier\n"
        "Address Family modifier\n"
        "Address Family modifier\n"
@@ -8043,6 +8125,20 @@ DEFUN (show_bgp_ipv6_safi_flap_filter_list,
   return bgp_show_filter_list (vty, argv[1], AFI_IP6, safi,
 			       bgp_show_type_flap_filter_list);
 }
+ALIAS (show_bgp_ipv6_safi_flap_filter_list, 
+       show_bgp_ipv6_safi_damp_flap_filter_list_cmd,
+       "show bgp ipv6 (encap|multicast|unicast|vpn) dampening flap-statistics filter-list WORD",
+       SHOW_STR
+       BGP_STR
+       IPV6_STR
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "Display routes conforming to the filter-list\n"
+       "Regular expression access list name\n")
 #endif
 
 DEFUN (show_bgp_ipv4_safi_filter_list, 
@@ -8104,6 +8200,18 @@ DEFUN (show_bgp_filter_list,
 
 #endif /* HAVE_IPV6 */
 
+DEFUN (show_ip_bgp_dampening_info,
+       show_ip_bgp_dampening_params_cmd,
+       "show ip bgp dampening parameters",
+       SHOW_STR
+       IP_STR
+       BGP_STR
+       "Display detailed information about dampening\n"
+       "Display detail of configured dampening parameters\n")
+{
+    return bgp_show_dampening_parameters (vty, AFI_IP, SAFI_UNICAST);
+}
+
 static int
 bgp_show_route_map (struct vty *vty, const char *rmap_str, afi_t afi,
 		    safi_t safi, enum bgp_show_type type)
@@ -8139,6 +8247,7 @@ DEFUN (show_bgp_ipv4_safi_flap_route_map,
        "show bgp ipv4 (encap|multicast|unicast|vpn) flap-statistics route-map WORD",
        SHOW_STR
        BGP_STR
+       IP_STR
        "Address Family Modifier\n"
        "Address Family Modifier\n"
        "Address Family Modifier\n"
@@ -8155,12 +8264,28 @@ DEFUN (show_bgp_ipv4_safi_flap_route_map,
   return bgp_show_route_map (vty, argv[1], AFI_IP, safi,
 			     bgp_show_type_flap_route_map);
 }
+
+ALIAS (show_bgp_ipv4_safi_flap_route_map, 
+       show_bgp_ipv4_safi_damp_flap_route_map_cmd,
+       "show bgp ipv4 (encap|multicast|unicast|vpn) dampening flap-statistics route-map WORD",
+       SHOW_STR
+       BGP_STR
+       IP_STR
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "Display routes matching the route-map\n"
+       "A route-map to match on\n")
 #ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_flap_route_map, 
        show_bgp_ipv6_safi_flap_route_map_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) flap-statistics route-map WORD",
        SHOW_STR
        BGP_STR
+       IPV6_STR
        "Address Family Modifier\n"
        "Address Family Modifier\n"
        "Address Family Modifier\n"
@@ -8177,6 +8302,20 @@ DEFUN (show_bgp_ipv6_safi_flap_route_map,
   return bgp_show_route_map (vty, argv[1], AFI_IP6, safi,
 			     bgp_show_type_flap_route_map);
 }
+ALIAS (show_bgp_ipv6_safi_flap_route_map, 
+       show_bgp_ipv6_safi_damp_flap_route_map_cmd,
+       "show bgp ipv6 (encap|multicast|unicast|vpn) dampening flap-statistics route-map WORD",
+       SHOW_STR
+       BGP_STR
+       IPV6_STR
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "Display routes matching the route-map\n"
+       "A route-map to match on\n")
 #endif
 
 DEFUN (show_bgp_ipv4_safi_route_map, 
@@ -8270,6 +8409,20 @@ DEFUN (show_bgp_ipv4_safi_flap_cidr_only,
   }
   return bgp_show (vty, NULL, AFI_IP, safi, bgp_show_type_flap_cidr_only, NULL);
 }
+
+ALIAS (show_bgp_ipv4_safi_flap_cidr_only,
+       show_bgp_ipv4_safi_damp_flap_cidr_only_cmd,
+       "show bgp ipv4 (encap|multicast|unicast|vpn) dampening flap-statistics cidr-only",
+       SHOW_STR
+       BGP_STR
+       "Address Family\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Address Family Modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "Display only routes with non-natural netmasks\n")
 
 DEFUN (show_bgp_ipv4_safi_cidr_only,
        show_bgp_ipv4_safi_cidr_only_cmd,
@@ -9306,6 +9459,21 @@ DEFUN (show_bgp_ipv4_safi_flap_prefix_longer,
 				 bgp_show_type_flap_prefix_longer);
 }
 
+ALIAS (show_bgp_ipv4_safi_flap_prefix_longer,
+       show_bgp_ipv4_safi_damp_flap_prefix_longer_cmd,
+       "show bgp ipv4 (encap|multicast|unicast|vpn) dampening flap-statistics A.B.C.D/M longer-prefixes",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n"
+       "Display route and more specific routes\n")
+
 #ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_flap_prefix_longer,
        show_bgp_ipv6_safi_flap_prefix_longer_cmd,
@@ -9330,6 +9498,20 @@ DEFUN (show_bgp_ipv6_safi_flap_prefix_longer,
   return bgp_show_prefix_longer (vty, argv[1], AFI_IP6, safi,
 				 bgp_show_type_flap_prefix_longer);
 }
+ALIAS (show_bgp_ipv6_safi_flap_prefix_longer,
+       show_bgp_ipv6_safi_damp_flap_prefix_longer_cmd,
+       "show bgp ipv6 (encap|multicast|unicast|vpn) dampening flap-statistics X:X::X:X/M longer-prefixes",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n"
+       "Display route and more specific routes\n")
 #endif
 
 DEFUN (show_bgp_ipv4_safi_prefix_longer,
@@ -9404,7 +9586,19 @@ DEFUN (show_bgp_ipv4_safi_flap_address,
   return bgp_show_prefix_longer (vty, argv[1], AFI_IP, safi,
 				 bgp_show_type_flap_address);
 }
-
+ALIAS (show_bgp_ipv4_safi_flap_address,
+       show_bgp_ipv4_safi_damp_flap_address_cmd,
+       "show bgp ipv4 (encap|multicast|unicast|vpn) dampening flap-statistics A.B.C.D",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "Network in the BGP routing table to display\n")
 #ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_flap_address,
        show_bgp_ipv6_flap_address_cmd,
@@ -9428,6 +9622,19 @@ DEFUN (show_bgp_ipv6_flap_address,
   return bgp_show_prefix_longer (vty, argv[1], AFI_IP, safi,
 				 bgp_show_type_flap_address);
 }
+ALIAS (show_bgp_ipv6_flap_address,
+       show_bgp_ipv6_damp_flap_address_cmd,
+       "show bgp ipv6 (encap|multicast|unicast|vpn) dampening flap-statistics A.B.C.D",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "Network in the BGP routing table to display\n")
 #endif
 
 DEFUN (show_bgp_ipv4_safi_flap_prefix,
@@ -9452,6 +9659,21 @@ DEFUN (show_bgp_ipv4_safi_flap_prefix,
   return bgp_show_prefix_longer (vty, argv[0], AFI_IP, safi,
 				 bgp_show_type_flap_prefix);
 }
+
+ALIAS (show_bgp_ipv4_safi_flap_prefix,
+       show_bgp_ipv4_safi_damp_flap_prefix_cmd,
+       "show bgp ipv4 (encap|multicast|unicast|vpn) dampening flap-statistics A.B.C.D/M",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
+
 #ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_flap_prefix,
        show_bgp_ipv6_safi_flap_prefix_cmd,
@@ -9475,6 +9697,21 @@ DEFUN (show_bgp_ipv6_safi_flap_prefix,
   return bgp_show_prefix_longer (vty, argv[0], AFI_IP6, safi,
 				 bgp_show_type_flap_prefix);
 }
+
+ALIAS (show_bgp_ipv6_safi_flap_prefix,
+       show_bgp_ipv6_safi_damp_flap_prefix_cmd,
+       "show bgp ipv6 (encap|multicast|unicast|vpn) dampening flap-statistics X:X::X:X/M",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n"
+       "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
+
 DEFUN (show_bgp_ipv6_prefix_longer,
        show_bgp_ipv6_prefix_longer_cmd,
        "show bgp ipv6 X:X::X:X/M longer-prefixes",
@@ -12070,6 +12307,7 @@ DEFUN (show_bgp_ipv4_safi_dampened_paths,
        "show bgp ipv4 (encap|multicast|unicast|vpn) dampened-paths",
        SHOW_STR
        BGP_STR
+       IP_STR
        "Address Family modifier\n"
        "Address Family modifier\n"
        "Address Family modifier\n"
@@ -12085,12 +12323,25 @@ DEFUN (show_bgp_ipv4_safi_dampened_paths,
 
   return bgp_show (vty, NULL, AFI_IP, safi, bgp_show_type_dampend_paths, NULL);
 }
+ALIAS (show_bgp_ipv4_safi_dampened_paths,
+       show_bgp_ipv4_safi_damp_dampened_paths_cmd,
+       "show bgp ipv4 (encap|multicast|unicast|vpn) dampening dampened-paths",
+       SHOW_STR
+       BGP_STR
+       IP_STR
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Display detailed information about dampening\n"
+       "Display paths suppressed due to dampening\n")
 #ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_dampened_paths,
        show_bgp_ipv6_safi_dampened_paths_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) dampened-paths",
        SHOW_STR
        BGP_STR
+       IPV6_STR
        "Address Family modifier\n"
        "Address Family modifier\n"
        "Address Family modifier\n"
@@ -12106,6 +12357,18 @@ DEFUN (show_bgp_ipv6_safi_dampened_paths,
 
   return bgp_show (vty, NULL, AFI_IP6, safi, bgp_show_type_dampend_paths, NULL);
 }
+ALIAS (show_bgp_ipv6_safi_dampened_paths,
+       show_bgp_ipv6_safi_damp_dampened_paths_cmd,
+       "show bgp ipv6 (encap|multicast|unicast|vpn) dampening dampened-paths",
+       SHOW_STR
+       BGP_STR
+       IPV6_STR
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Display detailed information about dampening\n"
+       "Display paths suppressed due to dampening\n")
 #endif
 
 DEFUN (show_bgp_ipv4_safi_flap_statistics,
@@ -12129,6 +12392,18 @@ DEFUN (show_bgp_ipv4_safi_flap_statistics,
 
   return bgp_show (vty, NULL, AFI_IP, safi, bgp_show_type_flap_statistics, NULL);
 }
+ALIAS (show_bgp_ipv4_safi_flap_statistics,
+       show_bgp_ipv4_safi_damp_flap_statistics_cmd,
+       "show bgp ipv4 (encap|multicast|unicast|vpn) dampening flap-statistics",
+       SHOW_STR
+       BGP_STR
+       "Address Family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n")
 #ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_flap_statistics,
        show_bgp_ipv6_safi_flap_statistics_cmd,
@@ -12151,6 +12426,18 @@ DEFUN (show_bgp_ipv6_safi_flap_statistics,
 
   return bgp_show (vty, NULL, AFI_IP6, safi, bgp_show_type_flap_statistics, NULL);
 }
+ALIAS (show_bgp_ipv6_safi_flap_statistics,
+       show_bgp_ipv6_safi_damp_flap_statistics_cmd,
+       "show bgp ipv6 (encap|multicast|unicast|vpn) dampening flap-statistics",
+       SHOW_STR
+       BGP_STR
+       "Address Family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Display detailed information about dampening\n"
+       "Display flap statistics of routes\n")
 #endif
 
 /* Display specified route of BGP table. */
@@ -12677,23 +12964,41 @@ bgp_route_init (void)
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_neighbor_received_prefix_filter_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_safi_dampened_paths_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_dampened_paths_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_safi_damp_dampened_paths_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_damp_dampened_paths_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_safi_flap_statistics_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_flap_statistics_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_safi_damp_flap_statistics_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_damp_flap_statistics_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_safi_flap_address_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_flap_address_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_safi_damp_flap_address_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_safi_flap_prefix_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_flap_prefix_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_safi_damp_flap_prefix_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_damp_flap_prefix_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_safi_flap_cidr_only_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_safi_damp_flap_cidr_only_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_safi_flap_regexp_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_flap_regexp_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_safi_damp_flap_regexp_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_damp_flap_regexp_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_safi_flap_filter_list_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_flap_filter_list_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_safi_damp_flap_filter_list_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_damp_flap_filter_list_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_safi_flap_prefix_list_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_flap_prefix_list_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_safi_damp_flap_prefix_list_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_damp_flap_prefix_list_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_safi_flap_prefix_longer_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_flap_prefix_longer_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_safi_damp_flap_prefix_longer_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_damp_flap_prefix_longer_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_safi_flap_route_map_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_flap_route_map_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_safi_damp_flap_route_map_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_damp_flap_route_map_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_safi_neighbor_flap_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_neighbor_flap_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_safi_neighbor_damp_cmd);
@@ -12818,23 +13123,41 @@ bgp_route_init (void)
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_neighbor_received_prefix_filter_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_dampened_paths_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_dampened_paths_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_safi_damp_dampened_paths_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_damp_dampened_paths_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_flap_statistics_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_flap_statistics_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_safi_damp_flap_statistics_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_damp_flap_statistics_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_flap_address_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_flap_address_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_safi_damp_flap_address_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_flap_prefix_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_flap_prefix_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_safi_damp_flap_prefix_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_damp_flap_prefix_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_flap_cidr_only_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_safi_damp_flap_cidr_only_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_flap_regexp_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_flap_regexp_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_safi_damp_flap_regexp_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_damp_flap_regexp_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_flap_filter_list_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_flap_filter_list_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_safi_damp_flap_filter_list_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_damp_flap_filter_list_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_flap_prefix_list_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_flap_prefix_list_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_safi_damp_flap_prefix_list_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_damp_flap_prefix_list_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_flap_prefix_longer_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_flap_prefix_longer_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_safi_damp_flap_prefix_longer_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_damp_flap_prefix_longer_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_flap_route_map_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_flap_route_map_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_safi_damp_flap_route_map_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_damp_flap_route_map_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_neighbor_flap_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_neighbor_flap_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_neighbor_damp_cmd);
