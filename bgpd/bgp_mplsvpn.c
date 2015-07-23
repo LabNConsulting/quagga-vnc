@@ -155,8 +155,6 @@ bgp_nlri_parse_vpn(
 	  return -1;
 	}
 
-      label = decode_label (pnt);
-
       /* Copyr label to prefix. */
       tagpnt = pnt;;
 
