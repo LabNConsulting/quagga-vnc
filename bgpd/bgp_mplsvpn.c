@@ -270,7 +270,7 @@ str2prefix_rd (const char *str, struct prefix_rd *prd)
 
   XFREE (MTYPE_TMP, half);
   stream_free(s);
-
+ 
   return 1;
 }
 
