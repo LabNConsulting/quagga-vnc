@@ -1,3 +1,8 @@
+/*
+ * This file has been modified by LabN Consulting, L.L.C.
+ *
+ */
+
 /* Generic linked list
  * Copyright (C) 1997, 2000 Kunihiro Ishiguro
  *
@@ -54,9 +59,9 @@ struct list
   void (*del) (void *val);
 };
 
-#define listnextnode(X) ((X) ? ((X)->next) : NULL)
-#define listhead(X) ((X) ? ((X)->head) : NULL)
-#define listtail(X) ((X) ? ((X)->tail) : NULL)
+#define listnextnode(X) ((X != NULL) ? ((X)->next) : NULL)
+#define listhead(X) ((X != NULL) ? ((X)->head) : NULL)
+#define listtail(X) ((X != NULL) ? ((X)->tail) : NULL)
 #define listcount(X) ((X)->count)
 #define list_isempty(X) ((X)->head == NULL && (X)->tail == NULL)
 #define listgetdata(X) (assert((X)->data != NULL), (X)->data)
