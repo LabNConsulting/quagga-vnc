@@ -1478,7 +1478,7 @@ void
 bgp_scan_destroy (void)
 {
   if (zlookup == NULL)
-    return;
+      return;
   THREAD_OFF(bgp_import_thread);
   THREAD_OFF(bgp_scan_thread);
   THREAD_OFF(zlookup->t_connect);

@@ -1085,7 +1085,7 @@ void
 bgp_zebra_destroy(void)
 {
   if (zclient == NULL)
-    return;
+      return;
   zclient_stop(zclient);
   zclient_free(zclient);
   zclient = NULL;

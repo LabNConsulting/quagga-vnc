@@ -3094,22 +3094,26 @@ bgp_clear_route_all (struct peer *peer)
  * Finish freeing things when exiting
  */
 static void
-bgp_drain_workqueue_immediate (struct work_queue *wq)
+bgp_drain_workqueue_immediate(struct work_queue *wq)
 {
-  if (!wq)
-    return;
+    if (!wq)
+	return;
 
-  if (!wq->thread)
-    {
-      /*
-       * no thread implies no queued items
-       */
-      assert(!wq->items->count);
-      return;
+    if (!wq->thread) {
+	/*
+	 * no thread implies no queued items
+	 */
+	assert(!wq->items->count);
+	return;
     }
 
-  while (wq->items->count)
-    work_queue_run(wq->thread);
+
+   fprintf(stderr, "%s: draining \"%s\"\n",
+    __func__, wq->name);
+
+    while (wq->items->count) {
+	work_queue_run(wq->thread);
+    }
 }
 
 /*
@@ -3119,10 +3123,10 @@ bgp_drain_workqueue_immediate (struct work_queue *wq)
 void
 bgp_peer_clear_node_queue_drain_immediate(struct peer *peer)
 {
-  if (!peer)
-    return;
+    if (!peer)
+	return;
 
-  bgp_drain_workqueue_immediate(peer->clear_node_queue);
+    bgp_drain_workqueue_immediate(peer->clear_node_queue);
 }
 
 /*
@@ -3133,8 +3137,8 @@ bgp_peer_clear_node_queue_drain_immediate(struct peer *peer)
 void
 bgp_process_queues_drain_immediate(void)
 {
-  bgp_drain_workqueue_immediate(bm->process_main_queue);
-  bgp_drain_workqueue_immediate(bm->process_rsclient_queue);
+    bgp_drain_workqueue_immediate(bm->process_main_queue);
+    bgp_drain_workqueue_immediate(bm->process_rsclient_queue);
 }
 
 void
@@ -3184,15 +3188,16 @@ bgp_cleanup_table(struct bgp_table *table, safi_t safi)
   struct bgp_info *ri;
   struct bgp_info *next;
 
-  for (rn = bgp_table_top (table); rn; rn = bgp_route_next (rn))
-    for (ri = rn->info; ri; ri = next)
-      {
-        next = ri->next;
-        if (CHECK_FLAG (ri->flags, BGP_INFO_SELECTED)
-            && ri->type == ZEBRA_ROUTE_BGP 
-            && ri->sub_type == BGP_ROUTE_NORMAL)
-          bgp_zebra_withdraw (&rn->p, ri, safi);
+  for (rn = bgp_table_top (table); rn; rn = bgp_route_next (rn)) {
+    for (ri = rn->info; ri; ri = next) {
+      next = ri->next;
+      if (CHECK_FLAG (ri->flags, BGP_INFO_SELECTED)
+	  && ri->type == ZEBRA_ROUTE_BGP 
+	  && ri->sub_type == BGP_ROUTE_NORMAL) {
+        bgp_zebra_withdraw (&rn->p, ri, safi);
       }
+    }
+  }
 }
 
 /* Delete all kernel routes. */
