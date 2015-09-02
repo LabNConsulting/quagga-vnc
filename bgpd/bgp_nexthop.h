@@ -67,6 +67,6 @@ extern int bgp_nexthop_onlink (afi_t, struct attr *);
 extern int bgp_nexthop_self (struct attr *);
 extern void bgp_address_init (void);
 extern void bgp_address_destroy (void);
-extern void bgp_scan_destroy (void);
+void bgp_scan_destroy (void);
 
 #endif /* _QUAGGA_BGP_NEXTHOP_H */
