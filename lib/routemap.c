@@ -1,3 +1,8 @@
+/*
+ * This file has been modified by LabN Consulting, L.L.C.
+ *
+ */
+
 /* Route map function.
    Copyright (C) 1998, 1999 Kunihiro Ishiguro
 
@@ -897,6 +902,9 @@ route_map_finish (void)
   route_match_vec = NULL;
   vector_free (route_set_vec);
   route_set_vec = NULL;
+  /* cleanup route_map */
+  while (route_map_master.head) 
+      route_map_delete (route_map_master.head);
 }
 
 /* VTY related functions. */
@@ -1285,6 +1293,8 @@ route_map_config_write (struct vty *vty)
 	
 	write++;
       }
+  if (!first)
+      vty_out (vty, " exit%s", VTY_NEWLINE);
   return write;
 }
 
