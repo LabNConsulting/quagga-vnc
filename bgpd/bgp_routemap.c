@@ -2363,7 +2363,7 @@ bgp_route_map_update (const char *unused)
   zlog_debug("%s: entry", __func__);
 
   if (bm->bgp == NULL)          /* may be called during cleanup */
-    return;
+      return;
 
   /* For neighbor route-map updates. */
   for (ALL_LIST_ELEMENTS (bm->bgp, mnode, mnnode, bgp))

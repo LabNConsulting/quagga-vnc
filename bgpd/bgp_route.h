@@ -246,8 +246,11 @@ extern void route_vty_out (struct vty *, struct prefix *, struct bgp_info *, int
 extern void route_vty_out_tag (struct vty *, struct prefix *, struct bgp_info *, int, safi_t);
 extern void route_vty_out_tmp (struct vty *, struct prefix *, struct attr *, safi_t);
 
-extern void bgp_peer_clear_node_queue_drain_immediate (struct peer *peer);
-extern void bgp_process_queues_drain_immediate (void);
+extern void
+bgp_peer_clear_node_queue_drain_immediate(struct peer *peer);
+
+extern void
+bgp_process_queues_drain_immediate(void);
 
 extern struct bgp_node *
 bgp_afi_node_get (struct bgp_table *table, afi_t afi, safi_t safi, struct prefix *p,
