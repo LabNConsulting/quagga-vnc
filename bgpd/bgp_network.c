@@ -1,3 +1,8 @@
+/*
+ * This file has been modified by LabN Consulting, L.L.C.
+ *
+ */
+
 /* BGP network related fucntions
    Copyright (C) 1999 Kunihiro Ishiguro
 
@@ -276,6 +281,7 @@ bgp_bind (struct peer *peer)
 #ifdef SO_BINDTODEVICE
   int ret;
   struct ifreq ifreq;
+  int myerrno;
 
   if (! peer->ifname)
     return 0;
@@ -287,13 +293,15 @@ bgp_bind (struct peer *peer)
   
   ret = setsockopt (peer->fd, SOL_SOCKET, SO_BINDTODEVICE, 
 		    &ifreq, sizeof (ifreq));
+  myerrno = errno;
 
   if (bgpd_privs.change (ZPRIVS_LOWER) )
     zlog_err ("bgp_bind: could not lower privs");
 
   if (ret < 0)
     {
-      zlog (peer->log, LOG_INFO, "bind to interface %s failed", peer->ifname);
+      zlog (peer->log, LOG_INFO, "bind to interface %s failed, errno=%d",
+	peer->ifname, myerrno);
       return ret;
     }
 #endif /* SO_BINDTODEVICE */
@@ -553,7 +561,7 @@ bgp_socket (unsigned short port, const char *address)
   int sock;
   int socklen;
   struct sockaddr_in sin;
-  int ret, en;
+  int ret;
 
   sock = socket (AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
