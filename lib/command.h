@@ -526,6 +526,7 @@ extern vector cmd_make_strvec (const char *);
 extern void cmd_free_strvec (vector);
 extern vector cmd_describe_command (vector, struct vty *, int *status);
 extern char **cmd_complete_command (vector, struct vty *, int *status);
+extern char **cmd_complete_command_lib (vector, struct vty *, int *status, int islib);
 extern const char *cmd_prompt (enum node_type);
 extern int config_from_file (struct vty *, FILE *, unsigned int *line_num);
 extern enum node_type node_parent (enum node_type);

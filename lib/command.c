@@ -2364,7 +2364,7 @@ cmd_complete_sort(vector matchvec)
 
 /* Command line completion support. */
 static char **
-cmd_complete_command_real (vector vline, struct vty *vty, int *status)
+cmd_complete_command_real (vector vline, struct vty *vty, int *status, int islib)
 {
   unsigned int i;
   vector cmd_vector = vector_copy (cmd_node_vector (cmdvec, vty->node));
@@ -2454,7 +2454,9 @@ cmd_complete_command_real (vector vline, struct vty *vty, int *status)
 		       cmd_entry_function (vector_slot (vline, index),
 					   token)))
 		    if (cmd_unique_string (matchvec, string))
-		      vector_set (matchvec, XSTRDUP (MTYPE_TMP, string));
+                        vector_set (matchvec, (islib != 0 ?
+                                               XSTRDUP (MTYPE_TMP, string) :
+                                               strdup (string) /* rl freed */));
 		}
       }
 
@@ -2500,7 +2502,9 @@ cmd_complete_command_real (vector vline, struct vty *vty, int *status)
 	    {
 	      char *lcdstr;
 
-	      lcdstr = XMALLOC (MTYPE_TMP, lcd + 1);
+	      lcdstr = (islib != 0 ? 
+                        XMALLOC (MTYPE_TMP, lcd + 1) : 
+                        malloc(lcd + 1));
 	      memcpy (lcdstr, matchvec->index[0], lcd);
 	      lcdstr[lcd] = '\0';
 
@@ -2509,8 +2513,12 @@ cmd_complete_command_real (vector vline, struct vty *vty, int *status)
 	      /* Free matchvec. */
 	      for (i = 0; i < vector_active (matchvec); i++)
 		{
-		  if (vector_slot (matchvec, i))
-		    XFREE (MTYPE_TMP, vector_slot (matchvec, i));
+                  if (vector_slot (matchvec, i)) {
+                    if (islib != 0)
+                      XFREE (MTYPE_TMP, vector_slot (matchvec, i));
+                    else
+                      free (vector_slot (matchvec, i));
+                  }
 		}
 	      vector_free (matchvec);
 
@@ -2534,7 +2542,7 @@ cmd_complete_command_real (vector vline, struct vty *vty, int *status)
 }
 
 char **
-cmd_complete_command (vector vline, struct vty *vty, int *status)
+cmd_complete_command_lib (vector vline, struct vty *vty, int *status, int islib)
 {
   char **ret;
 
@@ -2555,17 +2563,21 @@ cmd_complete_command (vector vline, struct vty *vty, int *status)
 	  vector_set_index (shifted_vline, index-1, vector_lookup(vline, index));
 	}
 
-      ret = cmd_complete_command_real (shifted_vline, vty, status);
+      ret = cmd_complete_command_real (shifted_vline, vty, status, islib);
 
       vector_free(shifted_vline);
       vty->node = onode;
       return ret;
   }
 
-
-  return cmd_complete_command_real (vline, vty, status);
+  return cmd_complete_command_real (vline, vty, status, islib);
 }
 
+char **
+cmd_complete_command (vector vline, struct vty *vty, int *status)
+{
+    return cmd_complete_command_lib (vline, vty, status, 0);
+}
 /* return parent node */
 /* MUST eventually converge on CONFIG_NODE */
 enum node_type
@@ -2804,6 +2816,9 @@ config_from_file (struct vty *vty, FILE *fp, unsigned int *line_num)
 
   while (fgets (vty->buf, VTY_BUFSIZ, fp))
     {
+      enum node_type original_vty_node = vty->node;
+      int tried_parent;
+
       ++(*line_num);
       vline = cmd_make_strvec (vty->buf);
 
@@ -2813,15 +2828,21 @@ config_from_file (struct vty *vty, FILE *fp, unsigned int *line_num)
       /* Execute configuration command : this is strict match */
       ret = cmd_execute_command_strict (vline, vty, NULL);
 
+      original_vty_node = vty->node;
+
       /* Try again with setting node to CONFIG_NODE */
+      tried_parent = 0;
       while (ret != CMD_SUCCESS && ret != CMD_WARNING
 	     && ret != CMD_ERR_NOTHING_TODO && vty->node != CONFIG_NODE)
 	{
 	  vty->node = node_parent(vty->node);
+	  tried_parent = 1;
 	  ret = cmd_execute_command_strict (vline, vty, NULL);
 	}
 
       cmd_free_strvec (vline);
+      if (tried_parent)
+	vty->node = original_vty_node;
 
       if (ret != CMD_SUCCESS && ret != CMD_WARNING
 	  && ret != CMD_ERR_NOTHING_TODO)
@@ -4009,6 +4030,37 @@ DEFUN (no_banner_motd,
   return CMD_SUCCESS;
 }
 
+DEFUN (show_commandtree,
+       show_commandtree_cmd,
+       "show commandtree",
+       NO_STR
+       "Show command tree\n")
+{
+  /* TBD */
+  vector cmd_vector;
+  unsigned int i;
+
+  vty_out (vty, "Current node id: %d%s", vty->node, VTY_NEWLINE);
+
+  /* vector of all commands installed at this node */
+  cmd_vector = vector_copy (cmd_node_vector (cmdvec, vty->node));
+
+  /* loop over all commands at this node */
+  for (i = 0; i < vector_active(cmd_vector); ++i) {
+    struct cmd_element *cmd_element;
+
+    /* A cmd_element (seems to be) is an individual command */
+    if ((cmd_element = vector_slot (cmd_vector, i)) == NULL)
+	continue;
+
+
+    vty_out (vty, "    %s%s", cmd_element->string, VTY_NEWLINE);
+  }
+
+  vector_free (cmd_vector);
+  return CMD_SUCCESS;
+}
+
 /* Set config filename.  Called from vty.c */
 void
 host_config_set (char *filename)
@@ -4077,6 +4129,7 @@ cmd_init (int terminal)
       install_element (VIEW_NODE, &config_terminal_length_cmd);
       install_element (VIEW_NODE, &config_terminal_no_length_cmd);
       install_element (VIEW_NODE, &show_logging_cmd);
+      install_element (VIEW_NODE, &show_commandtree_cmd);
       install_element (VIEW_NODE, &echo_cmd);
 
       install_element (RESTRICTED_NODE, &config_list_cmd);
@@ -4086,6 +4139,7 @@ cmd_init (int terminal)
       install_element (RESTRICTED_NODE, &config_enable_cmd);
       install_element (RESTRICTED_NODE, &config_terminal_length_cmd);
       install_element (RESTRICTED_NODE, &config_terminal_no_length_cmd);
+      install_element (RESTRICTED_NODE, &show_commandtree_cmd);
       install_element (RESTRICTED_NODE, &echo_cmd);
     }
 
@@ -4098,6 +4152,7 @@ cmd_init (int terminal)
     }
   install_element (ENABLE_NODE, &show_startup_config_cmd);
   install_element (ENABLE_NODE, &show_version_cmd);
+  install_element (ENABLE_NODE, &show_commandtree_cmd);
 
   if (terminal)
     {
@@ -4160,6 +4215,7 @@ cmd_init (int terminal)
       install_element (VIEW_NODE, &show_work_queues_cmd);
       install_element (ENABLE_NODE, &show_work_queues_cmd);
     }
+  install_element (CONFIG_NODE, &show_commandtree_cmd);
   srandom(time(NULL));
 }
 
