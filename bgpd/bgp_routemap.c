@@ -2357,6 +2357,11 @@ bgp_route_map_update (const char *unused)
   struct bgp_node *bn;
   struct bgp_static *bgp_static;
 
+  zlog_debug("%s: entry", __func__);
+
+  if (bm->bgp == NULL)          /* may be called during cleanup */
+      return;
+
   /* For neighbor route-map updates. */
   for (ALL_LIST_ELEMENTS (bm->bgp, mnode, mnnode, bgp))
     {
@@ -2455,6 +2460,7 @@ bgp_route_map_update (const char *unused)
 #endif /* HAVE_IPV6 */
 	}
     }
+    zlog_debug("%s: done", __func__);
 }
 
 DEFUN (match_peer,
