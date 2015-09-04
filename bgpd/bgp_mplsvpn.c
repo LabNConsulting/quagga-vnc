@@ -500,6 +500,13 @@ bgp_show_mpls_vpn(
   char v4_header[] = "   Network          Next Hop            Metric LocPrf Weight Path%s";
   char v4_header_tag[] = "   Network          Next Hop      In tag/Out tag%s";
 
+  unsigned long output_count = 0;
+  unsigned long total_count  = 0;
+  int machineparse = 0;
+
+  if (type == bgp_show_type_normal && output_arg == (void *)1)
+    machineparse = 1;
+
   bgp = bgp_get_default ();
   if (bgp == NULL)
     {
@@ -524,6 +531,7 @@ bgp_show_mpls_vpn(
 	  for (rm = bgp_table_top (table); rm; rm = bgp_route_next (rm))
 	    for (ri = rm->info; ri; ri = ri->next)
 	      {
+                total_count++;
 		if (type == bgp_show_type_neighbor)
 		  {
 		    union sockunion *su = output_arg;
@@ -568,6 +576,15 @@ bgp_show_mpls_vpn(
 		      decode_rd_ip (pnt + 2, &rd_ip);
 
 		    vty_out (vty, "Route Distinguisher: ");
+#if 0
+		    {
+			/* debugging - gpz */
+			u_char *p;
+			for (p = pnt; p < pnt+8; ++p) {
+			    vty_out(vty, "%02x ", *p);
+			}
+		    }
+#endif
 
 		    if (type == RD_TYPE_AS)
 		      vty_out (vty, "as2 %u:%d", rd_as.as, rd_as.val);
@@ -582,10 +599,20 @@ bgp_show_mpls_vpn(
 	        if (tags)
 		  route_vty_out_tag (vty, &rm->p, ri, 0, SAFI_MPLS_VPN);
 	        else
-		  route_vty_out (vty, &rm->p, ri, 0, SAFI_MPLS_VPN);
+		  route_vty_out (vty, &rm->p, ri, 0, SAFI_MPLS_VPN, machineparse);
+                output_count++;
 	      }
         }
     }
+
+  if (output_count == 0)
+    {
+        vty_out (vty, "No prefixes displayed, %ld exist%s", total_count, VTY_NEWLINE);
+    }
+  else
+    vty_out (vty, "%sDisplayed %ld out of %ld total prefixes%s",
+	     VTY_NEWLINE, output_count, total_count, VTY_NEWLINE);
+
   return CMD_SUCCESS;
 }
 
