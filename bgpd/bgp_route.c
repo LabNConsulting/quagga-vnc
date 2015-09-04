@@ -4024,15 +4024,15 @@ bgp_static_set_safi(
   const char	*tag_str,
   const char	*rmap_str)
 {
-  int ret;
-  struct prefix p;
-  struct prefix_rd prd;
-  struct bgp *bgp;
-  struct bgp_node *prn;
-  struct bgp_node *rn;
-  struct bgp_table *table;
-  struct bgp_static *bgp_static;
-  u_char tag[3];
+  int			ret;
+  struct prefix		p;
+  struct prefix_rd	prd;
+  struct bgp		*bgp;
+  struct bgp_node	*prn;
+  struct bgp_node	*rn;
+  struct bgp_table	*table;
+  u_char		tag[3];
+  struct bgp_static	*bgp_static;
 
   bgp = vty->index;
 
@@ -4109,15 +4109,15 @@ bgp_static_unset_safi(
     const char	*rd_str,
     const char	*tag_str)
 {
-  int ret;
-  struct bgp *bgp;
-  struct prefix p;
-  struct prefix_rd prd;
-  struct bgp_node *prn;
-  struct bgp_node *rn;
-  struct bgp_table *table;
-  struct bgp_static *bgp_static;
-  u_char tag[3];
+  int			ret;
+  struct bgp		*bgp;
+  struct prefix		p;
+  struct prefix_rd	prd;
+  struct bgp_node	*prn;
+  struct bgp_node	*rn;
+  struct bgp_table	*table;
+  struct bgp_static	*bgp_static;
+  u_char		tag[3];
 
   bgp = vty->index;
 
