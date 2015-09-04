@@ -15638,21 +15638,21 @@ bgp_clear_damp_route (struct vty *vty, const char *view_name,
 	  if ((table = rn->info) != NULL)
 	    if ((rm = bgp_node_match (table, &match)) != NULL)
               {
-                if (! prefix_check || rm->p.prefixlen == match.prefixlen)
-                  {
-                    ri = rm->info;
-                    while (ri)
-                      {
-                        if (ri->extra && ri->extra->damp_info)
-                          {
-                            ri_temp = ri->next;
-                            bgp_damp_info_free (ri->extra->damp_info, 1);
-                            ri = ri_temp;
-                          }
-                        else
-                          ri = ri->next;
-                      }
-                  }
+	      if (! prefix_check || rm->p.prefixlen == match.prefixlen)
+		{
+		  ri = rm->info;
+		  while (ri)
+		    {
+		      if (ri->extra && ri->extra->damp_info)
+			{
+			  ri_temp = ri->next;
+			  bgp_damp_info_free (ri->extra->damp_info, 1);
+			  ri = ri_temp;
+			}
+		      else
+			ri = ri->next;
+		    }
+		}
 
                 bgp_unlock_node (rm);
               }
@@ -15662,21 +15662,21 @@ bgp_clear_damp_route (struct vty *vty, const char *view_name,
     {
       if ((rn = bgp_node_match (bgp->rib[afi][safi], &match)) != NULL)
         {
-          if (! prefix_check || rn->p.prefixlen == match.prefixlen)
-            {
-              ri = rn->info;
-              while (ri)
-                {
-                  if (ri->extra && ri->extra->damp_info)
-                    {
-                      ri_temp = ri->next;
-                      bgp_damp_info_free (ri->extra->damp_info, 1);
-                      ri = ri_temp;
-                    }
-                  else
-                    ri = ri->next;
-                }
-            }
+	if (! prefix_check || rn->p.prefixlen == match.prefixlen)
+	  {
+	    ri = rn->info;
+	    while (ri)
+	      {
+		if (ri->extra && ri->extra->damp_info)
+		  {
+		    ri_temp = ri->next;
+		    bgp_damp_info_free (ri->extra->damp_info, 1);
+		    ri = ri_temp;
+		  }
+		else
+		  ri = ri->next;
+	      }
+	  }
 
           bgp_unlock_node (rn);
         }

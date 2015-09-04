@@ -7681,7 +7681,6 @@ DEFUN (show_bgp_ipv6_safi_summary,
 {
   if (strncmp (argv[0], "m", 1) == 0)
     return bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_MULTICAST);
-
   return bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_UNICAST);
 }
 
@@ -10827,12 +10826,16 @@ bgp_vty_init (void)
   install_element (ENABLE_NODE, &clear_bgp_all_cmd);
   install_element (ENABLE_NODE, &clear_bgp_instance_all_cmd);
   install_element (ENABLE_NODE, &clear_bgp_ipv6_all_cmd);
+
   install_element (ENABLE_NODE, &clear_bgp_peer_cmd);
   install_element (ENABLE_NODE, &clear_bgp_ipv6_peer_cmd);
+
   install_element (ENABLE_NODE, &clear_bgp_peer_group_cmd);
   install_element (ENABLE_NODE, &clear_bgp_ipv6_peer_group_cmd);
+
   install_element (ENABLE_NODE, &clear_bgp_external_cmd);
   install_element (ENABLE_NODE, &clear_bgp_ipv6_external_cmd);
+
   install_element (ENABLE_NODE, &clear_bgp_as_cmd);
   install_element (ENABLE_NODE, &clear_bgp_ipv6_as_cmd);
 #endif /* HAVE_IPV6 */
