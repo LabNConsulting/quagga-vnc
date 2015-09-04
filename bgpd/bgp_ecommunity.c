@@ -274,6 +274,7 @@ ecommunity_init (void)
 void
 ecommunity_finish (void)
 {
+  //hash_clean (ecomhash, (void (*)(void *))ecommunity_free);
   hash_free (ecomhash);
   ecomhash = NULL;
 }
