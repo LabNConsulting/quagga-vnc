@@ -584,11 +584,11 @@ str2prefix_ipv6 (const char *str, struct prefix_ipv6 *p)
     {
       int plen;
 
-      cp = XMALLOC (0, (pnt - str) + 1);
+      cp = XMALLOC (MTYPE_PREFIX_IPV6, (pnt - str) + 1);
       strncpy (cp, str, pnt - str);
       *(cp + (pnt - str)) = '\0';
       ret = inet_pton (AF_INET6, cp, &p->prefix);
-      free (cp);
+      XFREE(MTYPE_PREFIX_IPV6, cp);
       if (ret == 0)
 	return 0;
       plen = (u_char) atoi (++pnt);

@@ -154,6 +154,7 @@ struct memory_list memory_list_bgp[] =
   { MTYPE_BGP_REGEXP,		"BGP regexp"			},
   { MTYPE_BGP_AGGREGATE,	"BGP aggregate"			},
   { MTYPE_BGP_ADDR,		"BGP own address"		},
+  { MTYPE_ENCAP_TLV,		"ENCAP TLV",			},
   { -1, NULL }
 };
 
@@ -279,7 +280,6 @@ struct memory_list memory_list_vtysh[] =
   { MTYPE_VTYSH_CONFIG_LINE,	"Vtysh configuration line"	},
   { -1, NULL },
 };
-
 struct mlist mlists[] __attribute__ ((unused)) = {
   { memory_list_lib,	"LIB"	},
   { memory_list_zebra,	"ZEBRA"	},
