@@ -30,6 +30,7 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #include "bgpd/bgp_table.h"
 #include "bgpd/bgp_route.h"
 #include "bgpd/bgp_attr.h"
+#include "bgpd/bgp_vty.h"
 #include "bgpd/bgp_mplsvpn.h"
 
 static u_int16_t
@@ -110,6 +111,7 @@ bgp_nlri_parse_vpn(
   struct prefix p;
   int psize = 0;
   int prefixlen;
+  u_int32_t label __attribute__((unused));
   u_int16_t type;
   struct rd_as rd_as;
   struct rd_ip rd_ip;
@@ -147,6 +149,8 @@ bgp_nlri_parse_vpn(
 	  zlog_err ("prefix length is less than 88: %d", prefixlen);
 	  return -1;
 	}
+
+      label = decode_label (pnt);
 
       /* Copyr label to prefix. */
       tagpnt = pnt;;
