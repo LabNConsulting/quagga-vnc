@@ -1,3 +1,8 @@
+/*
+ * This file has been modified by LabN Consulting, L.L.C.
+ *
+ */
+
 /* BGP-4 Finite State Machine   
    From RFC1771 [A Border Gateway Protocol 4 (BGP-4)]
    Copyright (C) 1996, 97, 98 Kunihiro Ishiguro

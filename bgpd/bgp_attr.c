@@ -1741,7 +1741,7 @@ bgp_mp_reach_parse (struct bgp_attr_parser_args *args,
  
   if (safi != SAFI_MPLS_LABELED_VPN)
     {
-      ret = bgp_nlri_sanity_check (peer, afi, stream_pnt (s), nlri_len);
+      ret = bgp_nlri_sanity_check (peer, afi, safi, stream_pnt (s), nlri_len);
       if (ret < 0) 
         {
           zlog_info ("%s: (%s) NLRI doesn't pass sanity check",
@@ -1790,7 +1790,7 @@ bgp_mp_unreach_parse (struct bgp_attr_parser_args *args,
 
   if (safi != SAFI_MPLS_LABELED_VPN)
     {
-      ret = bgp_nlri_sanity_check (peer, afi, stream_pnt (s), withdraw_len);
+      ret = bgp_nlri_sanity_check (peer, afi, safi, stream_pnt (s), withdraw_len);
       if (ret < 0)
 	return BGP_ATTR_PARSE_ERROR_NOTIFYPLS;
     }
@@ -2407,8 +2407,9 @@ bgp_packet_mpattr_start (struct stream *s, afi_t afi, safi_t safi,
   stream_putc (s, BGP_ATTR_MP_REACH_NLRI);
   sizep = stream_get_endp (s);
   stream_putw (s, 0);	/* Marker: Attribute length. */
-  stream_putw (s, afi);	/* AFI */
-  stream_putc (s, safi);	/* SAFI */
+
+  stream_putw (s, afi);
+  stream_putc (s, (safi == SAFI_MPLS_VPN) ? SAFI_MPLS_LABELED_VPN : safi);
 
   /* Nexthop */
   switch (afi)
@@ -2416,15 +2417,21 @@ bgp_packet_mpattr_start (struct stream *s, afi_t afi, safi_t safi,
     case AFI_IP:
       switch (safi)
 	{
+#if 0                           /* LB: doesn't exist */
 	case SAFI_UNICAST:
+#endif
 	case SAFI_MULTICAST:
 	  stream_putc (s, 4);
 	  stream_put_ipv4 (s, attr->nexthop.s_addr);
 	  break;
 	case SAFI_MPLS_VPN:
 	  stream_putc (s, 12);
+	  stream_putl (s, 0);   /* RD = 0, per RFC */
 	  stream_putl (s, 0);
-	  stream_putl (s, 0);
+	  stream_put (s, &attr->extra->mp_nexthop_global_in, 4);
+	  break;
+	case SAFI_ENCAP:
+	  stream_putc (s, 4);
 	  stream_put (s, &attr->extra->mp_nexthop_global_in, 4);
 	  break;
 	default:
@@ -2446,6 +2453,33 @@ bgp_packet_mpattr_start (struct stream *s, afi_t afi, safi_t safi,
 	  if (attre->mp_nexthop_len == 32)
 	    stream_put (s, &attre->mp_nexthop_local, 16);
 	}
+	break;
+      case SAFI_MPLS_VPN:
+	{
+	  struct attr_extra *attre = attr->extra;
+
+	  assert (attr->extra);
+          if (attre->mp_nexthop_len == 16) {
+            stream_putc (s, 24);
+            stream_putl (s, 0);   /* RD = 0, per RFC */
+            stream_putl (s, 0);
+            stream_put (s, &attre->mp_nexthop_global, 16);
+          } else if (attre->mp_nexthop_len == 32) {
+            stream_putc (s, 48);
+            stream_putl (s, 0);   /* RD = 0, per RFC */
+            stream_putl (s, 0);
+            stream_put (s, &attre->mp_nexthop_global, 16);
+            stream_putl (s, 0);   /* RD = 0, per RFC */
+            stream_putl (s, 0);
+            stream_put (s, &attre->mp_nexthop_local, 16);
+          }
+        }
+	break;
+	case SAFI_ENCAP:
+          assert (attr->extra);
+          stream_putc (s, 16);
+	  stream_put (s, &attr->extra->mp_nexthop_global, 16);
+	  break;
       default:
 	break;
       }
@@ -2465,19 +2499,106 @@ bgp_packet_mpattr_prefix (struct stream *s, afi_t afi, safi_t safi,
 			  struct prefix *p, struct prefix_rd *prd,
 			  u_char *tag)
 {
-  switch (safi)
+  if (safi == SAFI_MPLS_VPN)
     {
-    case SAFI_MPLS_VPN:
       /* Tag, RD, Prefix write. */
       stream_putc (s, p->prefixlen + 88);
       stream_put (s, tag, 3);
       stream_put (s, prd->val, 8);
       stream_put (s, &p->u.prefix, PSIZE (p->prefixlen));
-      break;
-    default:
-      /* Prefix write. */
-      stream_put_prefix (s, p);
-      break;
+    }
+  else
+    stream_put_prefix (s, p);
+}
+
+size_t 
+bgp_packet_mpattr_prefix_size (afi_t afi, safi_t safi, struct prefix *p)
+{
+  int size = PSIZE (p->prefixlen);
+  if (safi == SAFI_MPLS_VPN)
+      size += 88;
+  return size;
+}
+
+/*
+ * Encodes the tunnel encapsulation attribute
+ */
+static void
+bgp_packet_mpattr_tea(
+    struct bgp		*bgp,
+    struct peer		*peer,
+    struct stream	*s,
+    struct attr		*attr,
+    uint8_t		attrtype)
+{
+    unsigned int			attrlenfield = 0;
+    struct bgp_attr_encap_subtlv	*subtlvs;
+    struct bgp_attr_encap_subtlv	*st;
+    const char				*attrname;
+
+    if (!attr || !attr->extra)
+	return;
+
+    switch (attrtype) {
+	case BGP_ATTR_ENCAP:
+	    attrname = "Tunnel Encap";
+	    subtlvs = attr->extra->encap_subtlvs;
+
+	    /*
+	     * The tunnel encap attr has an "outer" tlv.
+	     * T = tunneltype,
+	     * L = total length of subtlvs,
+	     * V = concatenated subtlvs.
+	     */
+	    attrlenfield = 2 + 2;	/* T + L */
+	    break;
+
+	default:
+	    assert(0);
+    }
+
+
+    /* compute attr length */
+    for (st = subtlvs; st; st = st->next) {
+	attrlenfield += (4 + st->length);
+    }
+
+    /* if no tlvs, don't make attr */
+    if (!attrlenfield)
+	return;
+
+    if (attrlenfield > 0xffff) {
+	zlog (peer->log, LOG_ERR, 
+	    "%s attribute is too long (length=%d), can't send it",
+	    attrname,
+	    attrlenfield);
+	return;
+    }
+
+    if (attrlenfield > 0xff) {
+	/* 2-octet length field */
+	stream_putc (s,
+	    BGP_ATTR_FLAG_TRANS|BGP_ATTR_FLAG_OPTIONAL|BGP_ATTR_FLAG_EXTLEN);
+	stream_putc (s, attrtype);
+	stream_putw (s, attrlenfield & 0xffff);
+    } else {
+	/* 1-octet length field */
+	stream_putc (s, BGP_ATTR_FLAG_TRANS|BGP_ATTR_FLAG_OPTIONAL);
+	stream_putc (s, attrtype);
+	stream_putc (s, attrlenfield & 0xff);
+    }
+
+    if (attrtype == BGP_ATTR_ENCAP) {
+	/* write outer T+L */
+	stream_putw(s, attr->extra->encap_tunneltype);
+	stream_putw(s, attrlenfield - 4);
+    }
+
+    /* write each sub-tlv */
+    for (st = subtlvs; st; st = st->next) {
+	stream_putw (s, st->type);
+	stream_putw (s, st->length);
+	stream_put (s, st->value, st->length);
     }
 }
 
@@ -2584,7 +2705,6 @@ bgp_packet_attribute (struct bgp *bgp, struct peer *peer,
   int send_as4_path = 0;
   int send_as4_aggregator = 0;
   int use32bit = (CHECK_FLAG (peer->cap, PEER_CAP_AS4_RCV)) ? 1 : 0;
-  size_t mpattrlen_pos = 0;
 
   if (! bgp)
     bgp = bgp_get_default ();
@@ -2592,13 +2712,15 @@ bgp_packet_attribute (struct bgp *bgp, struct peer *peer,
   /* Remember current pointer. */
   cp = stream_get_endp (s);
 
+#if 0                           /* duplicates mpattr included in bgp_packet.c */
   if (p && !(afi == AFI_IP && safi == SAFI_UNICAST))
     {
+      size_t mpattrlen_pos = 0;
       mpattrlen_pos = bgp_packet_mpattr_start(s, afi, safi, attr);
       bgp_packet_mpattr_prefix(s, afi, safi, p, prd, tag);
       bgp_packet_mpattr_end(s, mpattrlen_pos);
     }
-
+#endif
   /* Origin attribute. */
   stream_putc (s, BGP_ATTR_FLAG_TRANS);
   stream_putc (s, BGP_ATTR_ORIGIN);
@@ -2667,7 +2789,8 @@ bgp_packet_attribute (struct bgp *bgp, struct peer *peer,
       send_as4_path = 1; /* we'll do this later, at the correct place */
   
   /* Nexthop attribute. */
-  if (attr->flag & ATTR_FLAG_BIT (BGP_ATTR_NEXT_HOP) && afi == AFI_IP)
+  if (attr->flag & ATTR_FLAG_BIT (BGP_ATTR_NEXT_HOP) && afi == AFI_IP &&
+    safi ==  SAFI_UNICAST)   /* only write NH attr for unicast safi */
     {
       stream_putc (s, BGP_ATTR_FLAG_TRANS);
       stream_putc (s, BGP_ATTR_NEXT_HOP);
@@ -2920,6 +3043,54 @@ bgp_packet_attribute (struct bgp *bgp, struct peer *peer,
       stream_put_ipv4 (s, attr->extra->aggregator_addr.s_addr);
     }
   
+  if ((p->family == AF_INET
+#ifdef HAVE_IPV6
+  || p->family == AF_INET6
+#endif
+  ) &&
+    ((safi == SAFI_ENCAP) || (safi == SAFI_MPLS_VPN)))
+    {
+        struct bgp_attr_encap_subtlv *pEncap;
+        unsigned int	              attrlenfield = 0;
+	/* Tunnel Encap attribute */
+	bgp_packet_mpattr_tea(bgp, peer, s, attr, BGP_ATTR_ENCAP);
+
+      /* compute attr length */
+      if (attr && attr->extra && attr->extra->encap_subtlvs) {
+	for (pEncap = attr->extra->encap_subtlvs; pEncap; pEncap = pEncap->next) {
+	  attrlenfield += (4 + pEncap->length);
+	}
+      }
+
+      if (attrlenfield) { /* only make attr if subtlvs exist */
+	  if (attrlenfield > 0xffff) {
+	    zlog (peer->log, LOG_ERR, 
+		"Tunnel Encap attribute is too long (length=%d), can't send it",
+		attrlenfield);
+	  } else {
+	    if (attrlenfield > 0xff) {
+	      /* 2-octet length field */
+	      stream_putc (s,
+		BGP_ATTR_FLAG_TRANS|BGP_ATTR_FLAG_OPTIONAL|BGP_ATTR_FLAG_EXTLEN);
+	      stream_putc (s, BGP_ATTR_ENCAP);
+	      stream_putw (s, attrlenfield & 0xffff);
+	    } else {
+	      /* 1-octet length field */
+	      stream_putc (s, BGP_ATTR_FLAG_TRANS|BGP_ATTR_FLAG_OPTIONAL);
+	      stream_putc (s, BGP_ATTR_ENCAP);
+	      stream_putc (s, attrlenfield & 0xff);
+	    }
+
+	    /* write each sub-tlv */
+	    for (pEncap = attr->extra->encap_subtlvs; pEncap; pEncap = pEncap->next) {
+	      stream_putw (s, pEncap->type);
+	      stream_putw (s, pEncap->length);
+	      stream_put (s, pEncap->value, pEncap->length);
+	    }
+	  }
+       }
+    }
+
   /* Unknown transit attribute. */
   if (attr->extra && attr->extra->transit)
     stream_put (s, attr->extra->transit->val, attr->extra->transit->length);
@@ -2941,8 +3112,7 @@ bgp_packet_mpunreach_start (struct stream *s, afi_t afi, safi_t safi)
   stream_putw (s, 0);		/* Length of this attribute. */
 
   stream_putw (s, afi);
-  safi = (safi == SAFI_MPLS_VPN) ? SAFI_MPLS_LABELED_VPN : safi;
-  stream_putc (s, safi);
+  stream_putc (s, (safi == SAFI_MPLS_VPN) ? SAFI_MPLS_LABELED_VPN : safi);
   return attrlen_pnt;
 }
 
@@ -2951,26 +3121,13 @@ bgp_packet_mpunreach_prefix (struct stream *s, struct prefix *p,
 			     afi_t afi, safi_t safi, struct prefix_rd *prd,
 			     u_char *tag)
 {
-  if (safi == SAFI_MPLS_VPN)
-    {
-      stream_putc (s, p->prefixlen + 88);
-      stream_put (s, tag, 3);
-      stream_put (s, prd->val, 8);
-      stream_put (s, &p->u.prefix, PSIZE (p->prefixlen));
-    }
-  else
-    stream_put_prefix (s, p);
+  bgp_packet_mpattr_prefix (s, afi, safi, p, prd, tag);
 }
 
 void
 bgp_packet_mpunreach_end (struct stream *s, size_t attrlen_pnt)
 {
-  bgp_size_t size;
-
-  /* Set MP attribute length. Don't count the (2) bytes used to encode
-     the attr length */
-  size = stream_get_endp (s) - attrlen_pnt - 2;
-  stream_putw_at (s, attrlen_pnt, size);
+  bgp_packet_mpattr_end (s, attrlen_pnt);
 }
 
 /* Initialization of attribute. */
