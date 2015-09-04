@@ -46,6 +46,7 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #include "bgpd/bgp_ecommunity.h"
 #include "bgpd/bgp_network.h"
 #include "bgpd/bgp_mplsvpn.h"
+#include "bgpd/bgp_encap.h"
 #include "bgpd/bgp_advertise.h"
 #include "bgpd/bgp_vty.h"
 
@@ -1935,6 +1936,54 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
 
 	  if (BGP_DEBUG (update, UPDATE_IN))
 	    zlog (peer->log, LOG_DEBUG, "rcvd End-of-RIB for VPNv4 Unicast from %s",
+		  peer->host);
+	}
+    }
+  if (peer->afc[AFI_IP][SAFI_ENCAP])
+    {
+      if (mp_update.length 
+	  && mp_update.afi == AFI_IP 
+	  && mp_update.safi == SAFI_ENCAP)
+	bgp_nlri_parse_encap (mp_update.afi, peer, &attr, &mp_update, 0);
+
+      if (mp_withdraw.length 
+	  && mp_withdraw.afi == AFI_IP 
+	  && mp_withdraw.safi == SAFI_ENCAP)
+	bgp_nlri_parse_encap (mp_withdraw.afi, peer, &attr, &mp_withdraw, 1);
+
+      if (! withdraw_len
+	  && mp_withdraw.afi == AFI_IP
+	  && mp_withdraw.safi == SAFI_MPLS_LABELED_VPN
+	  && mp_withdraw.length == 0)
+	{
+	  /* End-of-RIB received */
+
+	  if (BGP_DEBUG (update, UPDATE_IN))
+	    zlog (peer->log, LOG_DEBUG, "rcvd End-of-RIB for Encap Unicast from %s",
+		  peer->host);
+	}
+    }
+  if (peer->afc[AFI_IP6][SAFI_ENCAP])
+    {
+      if (mp_update.length 
+	  && mp_update.afi == AFI_IP6 
+	  && mp_update.safi == SAFI_ENCAP)
+	bgp_nlri_parse_encap (mp_update.afi, peer, &attr, &mp_update, 0);
+
+      if (mp_withdraw.length 
+	  && mp_withdraw.afi == AFI_IP6
+	  && mp_withdraw.safi == SAFI_ENCAP)
+	bgp_nlri_parse_encap (mp_withdraw.afi, peer, &attr, &mp_withdraw, 1);
+
+      if (! withdraw_len
+	  && mp_withdraw.afi == AFI_IP6
+	  && mp_withdraw.safi == SAFI_MPLS_LABELED_VPN
+	  && mp_withdraw.length == 0)
+	{
+	  /* End-of-RIB received */
+
+	  if (BGP_DEBUG (update, UPDATE_IN))
+	    zlog (peer->log, LOG_DEBUG, "rcvd End-of-RIB for Encap Unicast from %s",
 		  peer->host);
 	}
     }

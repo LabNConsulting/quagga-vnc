@@ -120,6 +120,9 @@ struct bgp_static
     struct route_map *map;
   } rmap;
 
+  /* Route Distinguisher */
+  struct prefix_rd	prd;
+
   /* MPLS label.  */
   u_char tag[3];
 };

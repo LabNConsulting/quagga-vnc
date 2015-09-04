@@ -2426,6 +2426,10 @@ bgp_packet_mpattr_start (struct stream *s, afi_t afi, safi_t safi,
 	  stream_putl (s, 0);
 	  stream_put (s, &attr->extra->mp_nexthop_global_in, 4);
 	  break;
+	case SAFI_ENCAP:
+	  stream_putc (s, 4);
+	  stream_put (s, &attr->extra->mp_nexthop_global_in, 4);
+	  break;
 	default:
 	  break;
 	}
@@ -2467,6 +2471,11 @@ bgp_packet_mpattr_start (struct stream *s, afi_t afi, safi_t safi,
           }
         }
 	break;
+	case SAFI_ENCAP:
+          assert (attr->extra);
+          stream_putc (s, 16);
+	  stream_put (s, &attr->extra->mp_nexthop_global, 16);
+	  break;
       default:
 	break;
       }
@@ -2948,6 +2957,54 @@ bgp_packet_attribute (struct bgp *bgp, struct peer *peer,
       stream_put_ipv4 (s, attr->extra->aggregator_addr.s_addr);
     }
   
+  if ((p->family == AF_INET
+#ifdef HAVE_IPV6
+  || p->family == AF_INET6
+#endif
+  ) &&
+    ((safi == SAFI_ENCAP) || (safi == SAFI_MPLS_VPN)))
+    {
+        struct bgp_attr_encap_subtlv *pEncap;
+        unsigned int	              attrlenfield = 0;
+	/* Tunnel Encap attribute */
+	bgp_packet_mpattr_tea(bgp, peer, s, attr, BGP_ATTR_ENCAP);
+
+      /* compute attr length */
+      if (attr && attr->extra && attr->extra->encap_subtlvs) {
+	for (pEncap = attr->extra->encap_subtlvs; pEncap; pEncap = pEncap->next) {
+	  attrlenfield += (4 + pEncap->length);
+	}
+      }
+
+      if (attrlenfield) { /* only make attr if subtlvs exist */
+	  if (attrlenfield > 0xffff) {
+	    zlog (peer->log, LOG_ERR, 
+		"Tunnel Encap attribute is too long (length=%d), can't send it",
+		attrlenfield);
+	  } else {
+	    if (attrlenfield > 0xff) {
+	      /* 2-octet length field */
+	      stream_putc (s,
+		BGP_ATTR_FLAG_TRANS|BGP_ATTR_FLAG_OPTIONAL|BGP_ATTR_FLAG_EXTLEN);
+	      stream_putc (s, BGP_ATTR_ENCAP);
+	      stream_putw (s, attrlenfield & 0xffff);
+	    } else {
+	      /* 1-octet length field */
+	      stream_putc (s, BGP_ATTR_FLAG_TRANS|BGP_ATTR_FLAG_OPTIONAL);
+	      stream_putc (s, BGP_ATTR_ENCAP);
+	      stream_putc (s, attrlenfield & 0xff);
+	    }
+
+	    /* write each sub-tlv */
+	    for (pEncap = attr->extra->encap_subtlvs; pEncap; pEncap = pEncap->next) {
+	      stream_putw (s, pEncap->type);
+	      stream_putw (s, pEncap->length);
+	      stream_put (s, pEncap->value, pEncap->length);
+	    }
+	  }
+       }
+    }
+
   /* Unknown transit attribute. */
   if (attr->extra && attr->extra->transit)
     stream_put (s, attr->extra->transit->val, attr->extra->transit->length);
