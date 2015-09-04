@@ -9990,7 +9990,7 @@ static const char *pcount_strs[] =
   [PCOUNT_STALE]   = "Stale",
   [PCOUNT_VALID]   = "Valid",
   [PCOUNT_ALL]     = "All RIB",
-  [PCOUNT_COUNTED] = "PfxCt counted",
+  [PCOUNT_COUNTED] = "PfxUn counted",
   [PCOUNT_PFCNT]   = "Useable",
   [PCOUNT_MAX]     = NULL,
 };
@@ -10093,7 +10093,7 @@ bgp_peer_counts (struct vty *vty, struct peer *peer, afi_t afi, safi_t safi)
   
   vty_out (vty, "Prefix counts for %s, %s%s", 
            peer->host, afi_safi_print (afi, safi), VTY_NEWLINE);
-  vty_out (vty, "PfxCt: %ld%s", peer->pcount[afi][safi], VTY_NEWLINE);
+  vty_out (vty, "PfxUn: %ld%s", peer->pcount[afi][safi], VTY_NEWLINE);
   vty_out (vty, "%sCounts from RIB table walk:%s%s", 
            VTY_NEWLINE, VTY_NEWLINE, VTY_NEWLINE);
 
@@ -10103,7 +10103,7 @@ bgp_peer_counts (struct vty *vty, struct peer *peer, afi_t afi, safi_t safi)
 
   if (pcounts.count[PCOUNT_PFCNT] != peer->pcount[afi][safi])
     {
-      vty_out (vty, "%s [pcount] PfxCt drift!%s",
+      vty_out (vty, "%s [pcount] PfxUn drift!%s",
                peer->host, VTY_NEWLINE);
       vty_out (vty, "Please report this bug, with the above command output%s",
               VTY_NEWLINE);
