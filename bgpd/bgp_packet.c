@@ -1885,16 +1885,40 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
       if (mp_update.length 
 	  && mp_update.afi == AFI_IP 
 	  && mp_update.safi == SAFI_MPLS_LABELED_VPN)
-	bgp_nlri_parse_vpnv4 (peer, NLRI_ATTR_ARG, &mp_update);
+	bgp_nlri_parse_vpn (mp_update.afi, peer, &attr, &mp_update, 0);
 
       if (mp_withdraw.length 
 	  && mp_withdraw.afi == AFI_IP 
 	  && mp_withdraw.safi == SAFI_MPLS_LABELED_VPN)
-	bgp_nlri_parse_vpnv4 (peer, NULL, &mp_withdraw);
+	bgp_nlri_parse_vpn (mp_withdraw.afi, peer, &attr, &mp_withdraw, 1);
 
       if (! withdraw_len
 	  && mp_withdraw.afi == AFI_IP
 	  && mp_withdraw.safi == SAFI_MPLS_LABELED_VPN
+	  && mp_withdraw.length == 0)
+	{
+	  /* End-of-RIB received */
+
+	  if (BGP_DEBUG (update, UPDATE_IN))
+	    zlog (peer->log, LOG_DEBUG, "rcvd End-of-RIB for VPNv4 Unicast from %s",
+		  peer->host);
+	}
+    }
+  if (peer->afc[AFI_IP6][SAFI_MPLS_VPN])
+    {
+      if (mp_update.length 
+	  && mp_update.afi == AFI_IP6
+	  && mp_update.safi == BGP_SAFI_VPN)
+	bgp_nlri_parse_vpn (mp_update.afi, peer, &attr, &mp_update, 0);
+
+      if (mp_withdraw.length 
+	  && mp_withdraw.afi == AFI_IP6
+	  && mp_withdraw.safi == BGP_SAFI_VPN)
+	bgp_nlri_parse_vpn (mp_withdraw.afi, peer, &attr, &mp_withdraw, 1);
+
+      if (! withdraw_len
+	  && mp_withdraw.afi == AFI_IP6
+	  && mp_withdraw.safi == BGP_SAFI_VPN
 	  && mp_withdraw.length == 0)
 	{
 	  /* End-of-RIB received */
