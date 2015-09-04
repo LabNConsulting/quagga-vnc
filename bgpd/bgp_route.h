@@ -84,6 +84,7 @@ struct bgp_info
 #define BGP_INFO_MULTIPATH_CHG  (1 << 12)
 #define BGP_INFO_ANNOUNCED_ZEBRA (1 << 13)	/* did we annc to Zebra? */
 #define BGP_INFO_ANNOUNCED_DIRECT_BGP (1 << 14)	/* did we annc to direct bgp? */
+#define BGP_INFO_FORCE_KERNEL	(1 << 15)	/* force announce to zebra */
 
   /* BGP route type.  This can be static, RIP, OSPF, BGP etc.  */
   u_char type;
@@ -127,6 +128,9 @@ struct bgp_static
 
   /* MPLS label.  */
   u_char tag[3];
+
+  /* gpz: allow announcing to kernel/zebra */
+  u_char force_kernel_announce;
 };
 
 /* Flags which indicate a route is unuseable in some form */
