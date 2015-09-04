@@ -3356,7 +3356,7 @@ bgp_nlri_sanity_check (struct peer *peer, int afi, safi_t safi,
   u_char prefixlen;
   int psize;
 
-  if (safi == SAFI_MPLS_LABELED_VPN || safi == SAFI_MPLS_VPN) {
+  if (safi == BGP_SAFI_VPN || safi == SAFI_MPLS_VPN) {
 
     return 0;
   }

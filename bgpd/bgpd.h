@@ -760,6 +760,7 @@ struct bgp_nlri
 
 /* RFC4364 */
 #define SAFI_MPLS_LABELED_VPN                  128
+#define BGP_SAFI_VPN				128
 
 /* Max TTL value.  */
 #define TTL_MAX                                255
