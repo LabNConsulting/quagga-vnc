@@ -991,4 +991,6 @@ extern int peer_clear_soft (struct peer *, afi_t, safi_t, enum bgp_clear_type);
 extern int peer_ttl_security_hops_set (struct peer *, int);
 extern int peer_ttl_security_hops_unset (struct peer *);
 
+extern struct peer * peer_new (struct bgp *bgp);
+
 #endif /* _QUAGGA_BGPD_H */
