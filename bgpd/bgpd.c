@@ -5313,12 +5313,16 @@ bgp_config_write_family_header (struct vty *vty, afi_t afi, safi_t safi,
       if (safi == SAFI_MULTICAST)
 	vty_out (vty, "ipv4 multicast");
       else if (safi == SAFI_MPLS_VPN)
-	vty_out (vty, "vpnv4 unicast");
+	vty_out (vty, "vpnv4");
+      else if (safi == SAFI_ENCAP)
+	vty_out (vty, "encap");
     }
   else if (afi == AFI_IP6)
     {
       if (safi == SAFI_MPLS_VPN)
         vty_out (vty, "vpnv6");
+      else if (safi == SAFI_ENCAP)
+        vty_out (vty, "encapv6");
       else
         {
           vty_out (vty, "ipv6");
@@ -5560,6 +5564,9 @@ bgp_config_write (struct vty *vty)
       /* IPv4 VPN configuration.  */
       write += bgp_config_write_family (vty, bgp, AFI_IP, SAFI_MPLS_VPN);
 
+      /* ENCAPv4 configuration.  */
+      write += bgp_config_write_family (vty, bgp, AFI_IP, SAFI_ENCAP);
+
       /* IPv6 unicast configuration.  */
       write += bgp_config_write_family (vty, bgp, AFI_IP6, SAFI_UNICAST);
 
@@ -5568,6 +5575,11 @@ bgp_config_write (struct vty *vty)
 
       /* IPv6 VPN configuration.  */
       write += bgp_config_write_family (vty, bgp, AFI_IP6, SAFI_MPLS_VPN);
+
+      /* ENCAPv6 configuration.  */
+      write += bgp_config_write_family (vty, bgp, AFI_IP6, SAFI_ENCAP);
+
+      vty_out (vty, " exit%s", VTY_NEWLINE);
 
       write++;
     }
