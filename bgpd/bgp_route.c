@@ -1659,7 +1659,9 @@ bgp_process_main (struct work_queue *wq, void *data)
         {
           if (CHECK_FLAG (old_select->flags, BGP_INFO_IGP_CHANGED) ||
 	      CHECK_FLAG (old_select->flags, BGP_INFO_MULTIPATH_CHG))
-            bgp_zebra_announce (p, old_select, bgp, safi);
+            {
+              bgp_zebra_announce (p, old_select, bgp, safi);
+            }
           
 	  UNSET_FLAG (old_select->flags, BGP_INFO_MULTIPATH_CHG);
           UNSET_FLAG (rn->flags, BGP_NODE_PROCESS_SCHEDULED);
@@ -1669,13 +1671,13 @@ bgp_process_main (struct work_queue *wq, void *data)
 
   if (old_select)
     bgp_info_unset_flag (rn, old_select, BGP_INFO_SELECTED);
+
   if (new_select)
     {
       bgp_info_set_flag (rn, new_select, BGP_INFO_SELECTED);
       bgp_info_unset_flag (rn, new_select, BGP_INFO_ATTR_CHANGED);
       UNSET_FLAG (new_select->flags, BGP_INFO_MULTIPATH_CHG);
     }
-
 
   /* Check each BGP peer. */
   for (ALL_LIST_ELEMENTS (bgp->peer, node, nnode, peer))
@@ -1687,6 +1689,21 @@ bgp_process_main (struct work_queue *wq, void *data)
   if ((safi == SAFI_UNICAST || safi == SAFI_MULTICAST) && (! bgp->name &&
       ! bgp_option_check (BGP_OPT_NO_FIB)))
     {
+#undef DEBUGGING_ZEBRA_COMM
+#ifdef DEBUGGING_ZEBRA_COMM
+      zlog_debug ("%s: new_select=%p old_select=%p", __func__,
+	new_select, old_select);
+      if (new_select) {
+	zlog_debug ("new_select->type=%d new_select->sub_type=%d",
+	    new_select->type,
+	    new_select->sub_type);
+      }
+      if (old_select) {
+	zlog_debug ("old_select->type=%d old_select->sub_type=%d",
+	    old_select->type,
+	    old_select->sub_type);
+      }
+#endif
       if (new_select 
 	  && new_select->type == ZEBRA_ROUTE_BGP 
             && (new_select->sub_type == BGP_ROUTE_NORMAL || CHECK_FLAG(new_select->flags, BGP_INFO_FORCE_KERNEL)))
@@ -1912,7 +1929,7 @@ bgp_rib_withdraw (struct bgp_node *rn, struct bgp_info *ri, struct peer *peer,
         bgp_aggregate_decrement (peer->bgp, &rn->p, ri, afi, safi);
         return;
       }
-    
+
   bgp_rib_remove (rn, ri, peer, afi, safi);
 }
 
@@ -2346,7 +2363,7 @@ bgp_update_main (struct peer *peer, struct prefix *p, struct attr *attr,
 	  if (! CHECK_FLAG (ri->flags, BGP_INFO_HISTORY))
 	    bgp_damp_withdraw (ri, rn, afi, safi, 1);  
 	}
-	
+
       /* Update to new attribute.  */
       bgp_attr_unintern (&ri->attr);
       ri->attr = attr_new;
@@ -2452,7 +2469,6 @@ bgp_update_main (struct peer *peer, struct prefix *p, struct attr *attr,
 
   /* Process change. */
   bgp_process (bgp, rn, afi, safi);
-
   return 0;
 
   /* This BGP update is filtered.  Log the reason then update BGP
@@ -3664,6 +3680,7 @@ bgp_static_update_main (struct bgp *bgp, struct prefix *p,
 
       SET_FLAG (bgp->peer_self->rmap_type, PEER_RMAP_TYPE_NETWORK);
 
+      zlog_debug("%s: applying routemap", __func__);
       ret = route_map_apply (bgp_static->rmap.map, p, RMAP_BGP, &info);
 
       bgp->peer_self->rmap_type = 0;
@@ -3760,6 +3777,13 @@ bgp_static_update (struct bgp *bgp, struct prefix *p,
   struct peer *rsclient;
   struct listnode *node, *nnode;
 
+  {
+    char	buf[BUFSIZ];
+
+    prefix2str(p, buf, BUFSIZ);
+    zlog_debug("%s(pfx=%s)", __func__, buf);
+  }
+
   bgp_static_update_main (bgp, p, bgp_static, afi, safi);
 
   for (ALL_LIST_ELEMENTS (bgp->rsclient, node, nnode, rsclient))
@@ -3775,6 +3799,13 @@ bgp_static_withdraw (struct bgp *bgp, struct prefix *p, afi_t afi,
 {
   struct bgp_node *rn;
   struct bgp_info *ri;
+
+  {
+    char	buf[BUFSIZ];
+
+    prefix2str(p, buf, BUFSIZ);
+    zlog_debug("%s(pfx=%s)", __func__, buf);
+  }
 
   rn = bgp_afi_node_get (bgp->rib[afi][safi], afi, safi, p, NULL);
 
@@ -3977,7 +4008,8 @@ bgp_static_update_safi(
 
 /* Configure static BGP network.  When user don't run zebra, static
    route should be installed as valid.  */
-static int
+/* Configure static BGP network.  When user don't run zebra, static
+   route should be installed as valid.  */static int
 bgp_static_set (struct vty *vty, struct bgp *bgp, const char *ip_str, 
                 afi_t afi, safi_t safi, const char *rmap, int backdoor)
 {
@@ -4041,8 +4073,8 @@ bgp_static_set (struct vty *vty, struct bgp *bgp, const char *ip_str,
 
       /* Check previous routes are installed into BGP.  */
       if (bgp_static->valid && bgp_static->backdoor != backdoor)
-        need_update = 1;
-      
+            need_update = 1;
+          
       bgp_static->backdoor = backdoor;
       
       if (rmap)
@@ -4495,7 +4527,7 @@ DEFUN (bgp_network_mask_backdoor,
 {
   int ret;
   char prefix_str[BUFSIZ];
-  
+
   ret = netmask_str2prefix_str (argv[0], argv[1], prefix_str);
   if (! ret)
     {
@@ -4739,7 +4771,7 @@ ALIAS (no_ipv6_bgp_network,
        "Specify a network to announce via BGP\n"
        "IPv6 prefix <network>/<length>, e.g., 3ffe::/16\n")
 #endif /* HAVE_IPV6 */
-
+
 /* stubs for removed AS-Pathlimit commands, kept for config compatibility */
 ALIAS_DEPRECATED (bgp_network,
        bgp_network_ttl_cmd,
@@ -5412,8 +5444,8 @@ bgp_aggregate_set (struct vty *vty, const char *prefix_str,
         {
           vty_out (vty, "Error deleting aggregate.%s", VTY_NEWLINE);
 	  bgp_unlock_node (rn);
-	  return CMD_WARNING;
-        }
+      return CMD_WARNING;
+    }
     }
 
   /* Make aggregate address structure. */
@@ -6570,7 +6602,7 @@ route_vty_out_detail (struct vty *vty, struct bgp *bgp, struct prefix *p,
       tbuf = time(NULL) - (bgp_clock() - binfo->uptime);
       vty_out (vty, "      Last update: %s", ctime(&tbuf));
 #else
-      vty_out (vty, "      Last update: %s", ctime(&binfo->uptime));
+      vty_out (vty, "      Last update: %s", ctime (&binfo->uptime));
 #endif /* HAVE_CLOCK_MONOTONIC */
     }
   vty_out (vty, "%s", VTY_NEWLINE);
@@ -6991,7 +7023,7 @@ bgp_show_route_in_table (struct vty *vty, struct bgp *bgp,
                   if (prefix_check && rm->p.prefixlen != match.prefixlen)
                     {
                       bgp_unlock_node (rm);
-                      continue;
+                    continue;
                     }
 
                   for (ri = rm->info; ri; ri = ri->next)
@@ -9355,7 +9387,7 @@ bgp_show_community (struct vty *vty, const char *view_name, int argc,
 	  return CMD_WARNING;
 	}
     }
-
+  
   b = buffer_new (1024);
   for (i = 0; i < argc; i++)
     {
@@ -15137,6 +15169,7 @@ ALIAS (show_bgp_view_ipv6_safi_rsclient_prefix,
        "Information about Route Server Client\n"
        NEIGHBOR_ADDR_STR
        "IP prefix <network>/<length>, e.g., 3ffe::/16\n")
+
 
 #endif /* HAVE_IPV6 */
 
