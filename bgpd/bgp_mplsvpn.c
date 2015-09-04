@@ -98,13 +98,17 @@ decode_rd_ip (u_char *pnt, struct rd_ip *rd_ip)
 }
 
 int
-bgp_nlri_parse_vpnv4 (struct peer *peer, struct attr *attr, 
-		      struct bgp_nlri *packet)
+bgp_nlri_parse_vpn(
+    afi_t afi,
+    struct peer *peer,
+    struct attr *attr, 
+    struct bgp_nlri *packet,
+    int withdraw)
 {
   u_char *pnt;
   u_char *lim;
   struct prefix p;
-  int psize;
+  int psize = 0;
   int prefixlen;
   u_int16_t type;
   struct rd_as rd_as;
@@ -130,7 +134,12 @@ bgp_nlri_parse_vpnv4 (struct peer *peer, struct attr *attr,
 
       /* Fetch prefix length. */
       prefixlen = *pnt++;
-      p.family = AF_INET;
+      p.family = afi2family(afi);
+      if (p.family == 0) {
+	/* bad afi, shouldn't happen */
+	zlog_warn("%s: bad afi %d, dropping incoming route", __func__, afi);
+	continue;
+      }
       psize = PSIZE (prefixlen);
 
       if (prefixlen < 88)
@@ -175,12 +184,13 @@ bgp_nlri_parse_vpnv4 (struct peer *peer, struct attr *attr,
       if (pnt + psize > lim)
 	return -1;
 
-      if (attr)
-	bgp_update (peer, &p, attr, AFI_IP, SAFI_MPLS_VPN,
+      if (!withdraw) {
+	bgp_update (peer, &p, attr, afi, SAFI_MPLS_VPN,
 		    ZEBRA_ROUTE_BGP, BGP_ROUTE_NORMAL, &prd, tagpnt, 0);
-      else
-	bgp_withdraw (peer, &p, attr, AFI_IP, SAFI_MPLS_VPN,
+      } else {
+	bgp_withdraw (peer, &p, attr, afi, SAFI_MPLS_VPN,
 		      ZEBRA_ROUTE_BGP, BGP_ROUTE_NORMAL, &prd, tagpnt);
+      }
     }
 
   /* Packet length consistency check. */
@@ -471,6 +481,7 @@ static int
 bgp_show_mpls_vpn (struct vty *vty, struct prefix_rd *prd, enum bgp_show_type type,
 		   void *output_arg, int tags)
 {
+  afi_t afi = AFI_IP;
   struct bgp *bgp;
   struct bgp_table *table;
   struct bgp_node *rn;
@@ -488,7 +499,12 @@ bgp_show_mpls_vpn (struct vty *vty, struct prefix_rd *prd, enum bgp_show_type ty
       return CMD_WARNING;
     }
   
-  for (rn = bgp_table_top (bgp->rib[AFI_IP][SAFI_MPLS_VPN]); rn; rn = bgp_route_next (rn))
+  if ((afi != AFI_IP) && (afi != AFI_IP6)) {
+    vty_out (vty, "Afi %d not supported%s", afi, VTY_NEWLINE);
+    return CMD_WARNING;
+  }
+
+  for (rn = bgp_table_top (bgp->rib[afi][SAFI_MPLS_VPN]); rn; rn = bgp_route_next (rn))
     {
       if (prd && memcmp (rn->p.u.val, prd->val, 8) != 0)
 	continue;
