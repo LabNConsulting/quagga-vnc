@@ -1,4 +1,9 @@
 /*
+ * This file has been modified by LabN Consulting, L.L.C.
+ *
+ */
+
+/*
  * Zebra configuration command interface routine
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
  *
@@ -81,10 +86,13 @@ enum node_type
   BABEL_NODE,			/* Babel protocol mode node. */
   BGP_NODE,			/* BGP protocol mode which includes BGP4+ */
   BGP_VPNV4_NODE,		/* BGP MPLS-VPN PE exchange. */
+  BGP_VPNV6_NODE,		/* BGP MPLS-VPN PE exchange. */
   BGP_IPV4_NODE,		/* BGP IPv4 unicast address family.  */
   BGP_IPV4M_NODE,		/* BGP IPv4 multicast address family.  */
   BGP_IPV6_NODE,		/* BGP IPv6 address family */
   BGP_IPV6M_NODE,		/* BGP IPv6 multicast address family. */
+  BGP_ENCAP_NODE,		/* BGP ENCAP SAFI */
+  BGP_ENCAPV6_NODE,		/* BGP ENCAP SAFI */
   OSPF_NODE,			/* OSPF protocol mode */
   OSPF6_NODE,			/* OSPF protocol for IPv6 mode */
   ISIS_NODE,			/* ISIS protocol mode */
@@ -518,6 +526,7 @@ extern vector cmd_make_strvec (const char *);
 extern void cmd_free_strvec (vector);
 extern vector cmd_describe_command (vector, struct vty *, int *status);
 extern char **cmd_complete_command (vector, struct vty *, int *status);
+extern char **cmd_complete_command_lib (vector, struct vty *, int *status, int islib);
 extern const char *cmd_prompt (enum node_type);
 extern int config_from_file (struct vty *, FILE *, unsigned int *line_num);
 extern enum node_type node_parent (enum node_type);

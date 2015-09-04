@@ -1,3 +1,8 @@
+/*
+ * This file has been modified by LabN Consulting, L.L.C.
+ *
+ */
+
 /* MPLS-VPN
    Copyright (C) 2000 Kunihiro Ishiguro <kunihiro@zebra.org>
 
@@ -23,6 +28,8 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 #define RD_TYPE_AS      0
 #define RD_TYPE_IP      1
+#define RD_TYPE_AS4     2
+#define RD_TYPE_EOI	0xff00
 
 #define RD_ADDRSTRLEN  28
 
@@ -41,7 +48,12 @@ struct rd_ip
 };
 
 extern void bgp_mplsvpn_init (void);
-extern int bgp_nlri_parse_vpnv4 (struct peer *, struct attr *, struct bgp_nlri *);
+extern int bgp_nlri_parse_vpn (
+    afi_t,
+    struct peer *,
+    struct attr *,
+    struct bgp_nlri *,
+    int withdraw);
 extern u_int32_t decode_label (u_char *);
 extern int str2prefix_rd (const char *, struct prefix_rd *);
 extern int str2tag (const char *, u_char *);

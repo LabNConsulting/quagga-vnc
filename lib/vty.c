@@ -1,4 +1,9 @@
 /*
+ * This file has been modified by LabN Consulting, L.L.C.
+ *
+ */
+
+/*
  * Virtual terminal [aka TeletYpe] interface routine.
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
  *
@@ -110,7 +115,7 @@ vty_out (struct vty *vty, const char *format, ...)
     {
       /* Try to write to initial buffer.  */
       va_start (args, format);
-      len = vsnprintf (buf, sizeof buf, format, args);
+      len = vsnprintf (buf, sizeof(buf), format, args);
       va_end (args);
 
       /* Initial buffer is not enough.  */
@@ -400,6 +405,38 @@ vty_command (struct vty *vty, char *buf)
   int ret;
   vector vline;
   const char *protocolname;
+  char *cp;
+
+  /*
+   * Log non empty command lines
+   */
+  cp = buf;
+  if (cp != NULL) {
+      /* Skip white spaces. */
+      while (isspace ((int) *cp) && *cp != '\0')
+          cp++;
+  }
+  if (cp != NULL && *cp != '\0') {
+    int i;
+    char	vty_str[VTY_BUFSIZ];
+    char        prompt_str[VTY_BUFSIZ];
+
+    /* format the base vty info */
+    snprintf(vty_str, sizeof(vty_str), "vty[??]@%s", vty->address);
+    if (vty) {
+      for (i = 0; i < vector_active (vtyvec); i++) {
+	if ((vty == vector_slot (vtyvec, i))) {
+            snprintf(vty_str, sizeof(vty_str), "vty[%d]@%s", i, vty->address);
+	  break;
+	}
+      }
+    }
+    /* format the prompt */
+    snprintf(prompt_str, sizeof(prompt_str), cmd_prompt (vty->node), vty_str);
+
+    /* now log the command */
+    zlog(NULL, LOG_EMERG, "%s%s", prompt_str, buf);
+  }
 
   /* Split readline string up into the vector */
   vline = cmd_make_strvec (buf);
@@ -702,6 +739,9 @@ vty_end_config (struct vty *vty)
     case BABEL_NODE:
     case BGP_NODE:
     case BGP_VPNV4_NODE:
+    case BGP_VPNV6_NODE:
+    case BGP_ENCAP_NODE:
+    case BGP_ENCAPV6_NODE:
     case BGP_IPV4_NODE:
     case BGP_IPV4M_NODE:
     case BGP_IPV6_NODE:
@@ -872,7 +912,7 @@ vty_complete_command (struct vty *vty)
   if (isspace ((int) vty->buf[vty->length - 1]))
     vector_set (vline, '\0');
 
-  matched = cmd_complete_command (vline, vty, &ret);
+  matched = cmd_complete_command_lib (vline, vty, &ret, 1);
   
   cmd_free_strvec (vline);
 
@@ -1570,7 +1610,7 @@ vty_flush (struct thread *thread)
   erase = ((vty->status == VTY_MORE || vty->status == VTY_MORELINE));
 
   /* N.B. if width is 0, that means we don't know the window size. */
-  if ((vty->lines == 0) || (vty->width == 0))
+  if ((vty->lines == 0) || (vty->width == 0) || (vty->height == 0))
     flushrc = buffer_flush_available(vty->obuf, vty->fd);
   else if (vty->status == VTY_MORELINE)
     flushrc = buffer_flush_window(vty->obuf, vty->fd, vty->width,
@@ -2862,6 +2902,7 @@ vty_config_write (struct vty *vty)
         vty_out (vty, " anonymous restricted%s", VTY_NEWLINE);
     }
   
+  vty_out (vty, " exit%s", VTY_NEWLINE);
   vty_out (vty, "!%s", VTY_NEWLINE);
 
   return CMD_SUCCESS;
