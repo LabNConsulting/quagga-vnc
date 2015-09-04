@@ -240,7 +240,7 @@ extern u_char bgp_distance_apply (struct prefix *, struct bgp_info *, struct bgp
 extern afi_t bgp_node_afi (struct vty *);
 extern safi_t bgp_node_safi (struct vty *);
 
-extern void route_vty_out (struct vty *, struct prefix *, struct bgp_info *, int, safi_t);
+extern void route_vty_out (struct vty *, struct prefix *, struct bgp_info *, int, safi_t, int);
 extern void route_vty_out_tag (struct vty *, struct prefix *, struct bgp_info *, int, safi_t);
 extern void route_vty_out_tmp (struct vty *, struct prefix *, struct attr *, safi_t);
 

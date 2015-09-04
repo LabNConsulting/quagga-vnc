@@ -5921,8 +5921,13 @@ route_vty_short_status_out (struct vty *vty, struct bgp_info *binfo)
 
 /* called from terminal list command */
 void
-route_vty_out (struct vty *vty, struct prefix *p,
-	       struct bgp_info *binfo, int display, safi_t safi)
+route_vty_out(
+    struct vty *vty,
+    struct prefix *p,
+    struct bgp_info *binfo,
+    int display,
+    safi_t safi,
+    int machineparse)
 {
   struct attr *attr;
   
@@ -5930,7 +5935,7 @@ route_vty_out (struct vty *vty, struct prefix *p,
   route_vty_short_status_out (vty, binfo);
   
   /* print prefix and mask */
-  if (! display)
+  if (!display || machineparse)
     route_vty_out_route (p, vty);
   else
     vty_out (vty, "%*s", 17, " ");
@@ -6006,20 +6011,29 @@ route_vty_out (struct vty *vty, struct prefix *p,
 
 
       if (attr->flag & ATTR_FLAG_BIT (BGP_ATTR_MULTI_EXIT_DISC))
-	vty_out (vty, "%10u", attr->med);
+	vty_out (vty, "%10u ", attr->med);
       else
-	vty_out (vty, "          ");
+	if (machineparse)
+	  vty_out (vty, "-         ");
+	else
+	  vty_out (vty, "          ");
 
       if (attr->flag & ATTR_FLAG_BIT (BGP_ATTR_LOCAL_PREF))
-	vty_out (vty, "%7u", attr->local_pref);
+	vty_out (vty, "%7u ", attr->local_pref);
       else
-	vty_out (vty, "       ");
+	if (machineparse)
+	  vty_out (vty, "-      ");
+	else
+	  vty_out (vty, "       ");
 
       vty_out (vty, "%7u ", (attr->extra ? attr->extra->weight : 0));
     
       /* Print aspath */
       if (attr->aspath)
         aspath_print_vty (vty, "%s", attr->aspath, " ");
+      else
+	if (machineparse)
+          vty_out (vty, "-");
 
       /* Print origin */
       vty_out (vty, "%s", bgp_origin_str[attr->origin]);
@@ -6071,12 +6085,12 @@ route_vty_out_tmp (struct vty *vty, struct prefix *p,
 #endif /* HAVE_IPV6 */
 
       if (attr->flag & ATTR_FLAG_BIT (BGP_ATTR_MULTI_EXIT_DISC))
-	vty_out (vty, "%10u", attr->med);
+	vty_out (vty, "%10u ", attr->med);
       else
 	vty_out (vty, "          ");
 
       if (attr->flag & ATTR_FLAG_BIT (BGP_ATTR_LOCAL_PREF))
-	vty_out (vty, "%7u", attr->local_pref);
+	vty_out (vty, "%7u ", attr->local_pref);
       else
 	vty_out (vty, "       ");
       
@@ -6327,7 +6341,11 @@ route_vty_out_detail (struct vty *vty, struct bgp *bgp, struct prefix *p,
 	    vty_out (vty, " (inaccessible)"); 
 	  else if (binfo->extra && binfo->extra->igpmetric)
 	    vty_out (vty, " (metric %u)", binfo->extra->igpmetric);
-	  vty_out (vty, " from %s", sockunion2str (&binfo->peer->su, buf, SU_ADDRSTRLEN));
+	  if (!sockunion2str (&binfo->peer->su, buf, sizeof(buf))) {
+	    buf[0] = '?';
+	    buf[1] = 0;
+	  }
+	  vty_out (vty, " from %s", buf);
 	  if (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_ORIGINATOR_ID))
 	    vty_out (vty, " (%s)", inet_ntoa (attr->extra->originator_id));
 	  else
@@ -6481,9 +6499,14 @@ bgp_show_table (struct vty *vty, struct bgp_table *table, struct in_addr *router
   int header = 1;
   int display;
   unsigned long output_count;
+  unsigned long total_count;
+  int machineparse = 0;
 
   /* This is first entry point, so reset total line. */
   output_count = 0;
+  total_count  = 0;
+  if (type == bgp_show_type_normal && output_arg == (void *)1)
+    machineparse = 1;
 
   /* Start processing of routes. */
   for (rn = bgp_table_top (table); rn; rn = bgp_route_next (rn)) 
@@ -6493,6 +6516,7 @@ bgp_show_table (struct vty *vty, struct bgp_table *table, struct in_addr *router
 
 	for (ri = rn->info; ri; ri = ri->next)
 	  {
+            total_count++;
 	    if (type == bgp_show_type_flap_statistics
 		|| type == bgp_show_type_flap_address
 		|| type == bgp_show_type_flap_prefix
@@ -6676,7 +6700,7 @@ bgp_show_table (struct vty *vty, struct bgp_table *table, struct in_addr *router
 		     || type == bgp_show_type_flap_neighbor)
 	      flap_route_vty_out (vty, &rn->p, ri, display, SAFI_UNICAST);
 	    else
-	      route_vty_out (vty, &rn->p, ri, display, SAFI_UNICAST);
+	      route_vty_out (vty, &rn->p, ri, display, SAFI_UNICAST, machineparse);
 	    display++;
 	  }
 	if (display)
@@ -6687,11 +6711,11 @@ bgp_show_table (struct vty *vty, struct bgp_table *table, struct in_addr *router
   if (output_count == 0)
     {
       if (type == bgp_show_type_normal)
-	vty_out (vty, "No BGP network exists%s", VTY_NEWLINE);
+        vty_out (vty, "No BGP prefixes displayed, %ld exist%s", total_count, VTY_NEWLINE);
     }
   else
-    vty_out (vty, "%sTotal number of prefixes %ld%s",
-	     VTY_NEWLINE, output_count, VTY_NEWLINE);
+    vty_out (vty, "%sDisplayed  %ld out of %ld total prefixes%s",
+	     VTY_NEWLINE, output_count, total_count, VTY_NEWLINE);
 
   return CMD_SUCCESS;
 }
@@ -9791,7 +9815,7 @@ bgp_table_stats (struct vty *vty, struct bgp *bgp, afi_t afi, safi_t safi)
   
   if (!bgp->rib[afi][safi])
     {
-      vty_out (vty, "%% No RIB exist for the AFI/SAFI%s", VTY_NEWLINE);
+      vty_out (vty, "%% No RIB exists for the AFI/SAFI%s", VTY_NEWLINE);
       return CMD_WARNING;
     }
   
@@ -9882,7 +9906,7 @@ bgp_table_stats_vty (struct vty *vty, const char *name,
 
   if (!bgp)
     {
-      vty_out (vty, "%% No such BGP instance exist%s", VTY_NEWLINE);
+      vty_out (vty, "%% No such BGP instance exists%s", VTY_NEWLINE);
       return CMD_WARNING;
     }
   if (strncmp (afi_str, "ipv", 3) == 0)
