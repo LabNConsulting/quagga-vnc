@@ -168,6 +168,7 @@ static const struct in6_addr maskbytes6[] =
 /* Number of bits in prefix type. */
 #ifndef PNBBY
 #define PNBBY 8
+/*#define PNBBY_NBITS 3*/
 #endif /* PNBBY */
 
 #define MASKBIT(offset)  ((0xff << (PNBBY - (offset))) & 0xff)
@@ -254,14 +255,17 @@ prefix_match (const struct prefix *n, const struct prefix *p)
   /* If n's prefix is longer than p's one return 0. */
   if (n->prefixlen > p->prefixlen)
     return 0;
-
+#ifndef PNBBY_NBITS
   /* Set both prefix's head pointer. */
   np = (const u_char *)&n->u.prefix;
   pp = (const u_char *)&p->u.prefix;
   
   offset = n->prefixlen / PNBBY;
   shift =  n->prefixlen % PNBBY;
-
+#else
+  offset = n->prefixlen >> PNBBY_NBITS;
+  shift =  n->prefixlen & (PNBBY-1);
+#endif
   if (shift)
     if (maskbit[shift] & (np[offset] ^ pp[offset]))
       return 0;
