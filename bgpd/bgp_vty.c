@@ -56,15 +56,14 @@ extern struct in_addr router_id_zebra;
 afi_t
 bgp_node_afi (struct vty *vty)
 {
-  switch (vty->node)
-    {
+  switch (vty->node) {
     case BGP_IPV6_NODE:
     case BGP_IPV6M_NODE:
     case BGP_VPNV6_NODE:
     case BGP_ENCAPV6_NODE:
-      return AFI_IP6;
-      break;
-    }
+	return AFI_IP6;
+	break;
+  }
 
   return AFI_IP;
 }
@@ -10796,8 +10795,10 @@ bgp_vty_init (void)
   install_element (BGP_NODE, &address_family_vpnv4_cmd);
   install_element (BGP_NODE, &address_family_vpnv4_unicast_cmd);
 
+#ifdef HAVE_IPV6
   install_element (BGP_NODE, &address_family_vpnv6_cmd);
   install_element (BGP_NODE, &address_family_vpnv6_unicast_cmd);
+#endif
 
   install_element (BGP_NODE, &address_family_encap_cmd);
   install_element (BGP_NODE, &address_family_encapv4_cmd);
