@@ -60,7 +60,7 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 extern const char *bgp_origin_str[];
 extern const char *bgp_origin_long_str[];
 
-static struct bgp_node *
+struct bgp_node *
 bgp_afi_node_get (struct bgp_table *table, afi_t afi, safi_t safi, struct prefix *p,
 		  struct prefix_rd *prd)
 {
@@ -127,7 +127,7 @@ bgp_info_extra_get (struct bgp_info *ri)
 }
 
 /* Allocate new bgp info structure. */
-static struct bgp_info *
+struct bgp_info *
 bgp_info_new (void)
 {
   return XCALLOC (MTYPE_BGP_ROUTE, sizeof (struct bgp_info));
@@ -228,7 +228,7 @@ bgp_info_delete (struct bgp_node *rn, struct bgp_info *ri)
 /* undo the effects of a previous call to bgp_info_delete; typically
    called when a route is deleted and then quickly re-added before the
    deletion has been processed */
-static void
+void
 bgp_info_restore (struct bgp_node *rn, struct bgp_info *ri)
 {
   bgp_info_unset_flag (rn, ri, BGP_INFO_REMOVED);
@@ -322,7 +322,7 @@ bgp_med_value (struct attr *attr, struct bgp *bgp)
 }
 
 /* Compare two bgp route entity.  br is preferable then return 1. */
-static int
+int
 bgp_info_cmp (struct bgp *bgp, struct bgp_info *new, struct bgp_info *exist,
 	      int *paths_eq)
 {
@@ -820,12 +820,27 @@ bgp_announce_check (struct bgp_info *ri, struct peer *peer, struct prefix *p,
   int transparent;
   int reflect;
   struct attr *riattr;
+  int samepeer_safe = 0;
 
   from = ri->peer;
   filter = &peer->filter[afi][safi];
   bgp = peer->bgp;
   riattr = bgp_info_mpath_count (ri) ? bgp_info_mpath_attr (ri) : ri->attr;
-  
+
+    if (((afi == AFI_IP) || (afi == AFI_IP6)) && (safi == SAFI_MPLS_VPN) &&
+	((ri->type == ZEBRA_ROUTE_BGP_DIRECT) ||
+	 (ri->type == ZEBRA_ROUTE_BGP_DIRECT_EXT))) {
+
+	/*
+	 * direct and direct_ext type routes originate internally even
+	 * though they can have peer pointers that reference other systems
+	 */
+	char	buf[BUFSIZ];
+	prefix2str(p, buf, BUFSIZ);
+	zlog_debug("%s: pfx %s bgp_direct->vpn route peer safe", __func__, buf);
+	samepeer_safe = 1;
+    }
+
   if (DISABLE_BGP_ANNOUNCE)
     return 0;
 
@@ -835,7 +850,20 @@ bgp_announce_check (struct bgp_info *ri, struct peer *peer, struct prefix *p,
 
   /* Do not send back route to sender. */
   if (from == peer)
-    return 0;
+    if (!samepeer_safe)
+      return 0;
+
+  /* If peer's id and route's nexthop are same. draft-ietf-idr-bgp4-23 5.1.3 */
+  if (p->family == AF_INET
+      && IPV4_ADDR_SAME(&peer->remote_id, &riattr->nexthop))
+      if (!samepeer_safe)
+	return 0;
+#ifdef HAVE_IPV6
+  if (p->family == AF_INET6
+     && IPV6_ADDR_SAME(&peer->remote_id, &riattr->nexthop))
+    if (!samepeer_safe)
+      return 0;
+#endif
 
   /* Aggregate-address suppress check. */
   if (ri->extra && ri->extra->suppress)
@@ -935,7 +963,7 @@ bgp_announce_check (struct bgp_info *ri, struct peer *peer, struct prefix *p,
     reflect = 0;
 
   /* IBGP reflection check. */
-  if (reflect)
+  if (reflect && !samepeer_safe)
     {
       /* A route from a Client peer. */
       if (CHECK_FLAG (from->af_flags[afi][safi], PEER_FLAG_REFLECTOR_CLIENT))
@@ -1854,7 +1882,7 @@ bgp_maximum_prefix_overflow (struct peer *peer, afi_t afi,
 /* Unconditionally remove the route from the RIB, without taking
  * damping into consideration (eg, because the session went down)
  */
-static void
+void
 bgp_rib_remove (struct bgp_node *rn, struct bgp_info *ri, struct peer *peer,
 		afi_t afi, safi_t safi)
 {

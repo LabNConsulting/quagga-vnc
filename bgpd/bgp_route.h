@@ -82,6 +82,8 @@ struct bgp_info
 #define BGP_INFO_COUNTED	(1 << 10)
 #define BGP_INFO_MULTIPATH      (1 << 11)
 #define BGP_INFO_MULTIPATH_CHG  (1 << 12)
+#define BGP_INFO_ANNOUNCED_ZEBRA (1 << 13)	/* did we annc to Zebra? */
+#define BGP_INFO_ANNOUNCED_DIRECT_BGP (1 << 14)	/* did we annc to direct bgp? */
 
   /* BGP route type.  This can be static, RIP, OSPF, BGP etc.  */
   u_char type;
@@ -246,5 +248,16 @@ extern void route_vty_out_tmp (struct vty *, struct prefix *, struct attr *, saf
 
 extern void bgp_peer_clear_node_queue_drain_immediate (struct peer *peer);
 extern void bgp_process_queues_drain_immediate (void);
+
+extern struct bgp_node *
+bgp_afi_node_get (struct bgp_table *table, afi_t afi, safi_t safi, struct prefix *p,
+		  struct prefix_rd *prd);
+extern struct bgp_info *bgp_info_new (void);
+extern void bgp_info_restore (struct bgp_node *rn, struct bgp_info *ri);
+extern int bgp_info_cmp (struct bgp *bgp, struct bgp_info *new, struct bgp_info *exist,
+                         int *paths_eq);
+extern void
+bgp_rib_remove (struct bgp_node *rn, struct bgp_info *ri, struct peer *peer,
+		afi_t afi, safi_t safi);
 
 #endif /* _QUAGGA_BGP_ROUTE_H */

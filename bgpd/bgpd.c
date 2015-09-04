@@ -803,7 +803,7 @@ peer_unlock_with_caller (const char *name, struct peer *peer)
 }
   
 /* Allocate new peer object, implicitely locked.  */
-static struct peer *
+struct peer *
 peer_new (struct bgp *bgp)
 {
   afi_t afi;
