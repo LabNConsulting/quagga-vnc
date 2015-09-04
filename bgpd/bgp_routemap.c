@@ -1041,30 +1041,92 @@ struct route_map_rule_cmd route_set_ip_nexthop_cmd =
 
 /* `set local-preference LOCAL_PREF' */
 
+struct local_pref_setting {
+    int		type;
+#define LOCAL_PREF_TYPE_CONSTANT			0
+#define LOCAL_PREF_TYPE_FROM_MED			1
+
+    uint32_t	value;
+};
+
 /* Set local preference. */
 static route_map_result_t
 route_set_local_pref (void *rule, struct prefix *prefix,
 		      route_map_object_t type, void *object)
 {
-  struct rmap_value *rv;
+  //u_int32_t *local_pref;
+  struct local_pref_setting *local_pref;
   struct bgp_info *bgp_info;
-  u_int32_t locpref = 0;
 
   if (type == RMAP_BGP)
     {
       /* Fetch routemap's rule information. */
-      rv = rule;
+      local_pref = rule;
       bgp_info = object;
     
-      /* Set local preference value. */ 
-      if (bgp_info->attr->flag & ATTR_FLAG_BIT (BGP_ATTR_LOCAL_PREF))
-	locpref = bgp_info->attr->local_pref;
+      switch (local_pref->type) {
+	case LOCAL_PREF_TYPE_CONSTANT:
+	  /* Set local preference value. */ 
+	  bgp_info->attr->flag |= ATTR_FLAG_BIT (BGP_ATTR_LOCAL_PREF);
+	  bgp_info->attr->local_pref = local_pref->value;
+	  break;
 
-      bgp_info->attr->flag |= ATTR_FLAG_BIT (BGP_ATTR_LOCAL_PREF);
-      bgp_info->attr->local_pref = route_value_adjust(rv, locpref, bgp_info->peer);
+	case LOCAL_PREF_TYPE_FROM_MED:
+	    if ((bgp_info->attr->flag & ATTR_FLAG_BIT (BGP_ATTR_MULTI_EXIT_DISC))) {
+	      bgp_info->attr->flag |= ATTR_FLAG_BIT (BGP_ATTR_LOCAL_PREF);
+	      bgp_info->attr->local_pref = 0xffffffff - bgp_info->attr->med;
+	    }
+	    break;
+      }
+
     }
 
   return RMAP_OKAY;
+}
+
+/* set local preference compilation. */
+static void *
+route_set_local_pref_compile (const char *arg)
+{
+  unsigned long tmp;
+  struct local_pref_setting *local_pref;
+  int type = 0;
+  char *endptr = NULL;
+
+  if (!strcmp(arg, "from-med")) {
+    type = LOCAL_PREF_TYPE_FROM_MED;
+  } else {
+
+    /* Local preference value shoud be integer. */
+    if (! all_digit (arg))
+      return NULL;
+  
+    errno = 0;
+    tmp = strtoul (arg, &endptr, 10);
+    if (*endptr != '\0' || errno || tmp > UINT32_MAX)
+      return NULL;
+
+    type = LOCAL_PREF_TYPE_CONSTANT;
+  }
+   
+  local_pref = XMALLOC (MTYPE_ROUTE_MAP_COMPILED,
+    sizeof (struct local_pref_setting)); 
+  
+  if (!local_pref)
+    return local_pref;
+  
+  local_pref->type = type;
+  if (type == LOCAL_PREF_TYPE_CONSTANT)
+      local_pref->value = tmp;
+  
+  return local_pref;
+}
+
+/* Free route map's local preference value. */
+static void
+route_set_local_pref_free (void *rule)
+{
+  XFREE (MTYPE_ROUTE_MAP_COMPILED, rule);
 }
 
 /* Set local preference rule structure. */
@@ -1072,8 +1134,8 @@ struct route_map_rule_cmd route_set_local_pref_cmd =
 {
   "local-preference",
   route_set_local_pref,
-  route_value_compile,
-  route_value_free,
+  route_set_local_pref_compile,
+  route_set_local_pref_free,
 };
 
 /* `set weight WEIGHT' */
@@ -2295,6 +2357,11 @@ bgp_route_map_update (const char *unused)
   struct bgp_node *bn;
   struct bgp_static *bgp_static;
 
+  zlog_debug("%s: entry", __func__);
+
+  if (bm->bgp == NULL)          /* may be called during cleanup */
+      return;
+
   /* For neighbor route-map updates. */
   for (ALL_LIST_ELEMENTS (bm->bgp, mnode, mnnode, bgp))
     {
@@ -2393,6 +2460,7 @@ bgp_route_map_update (const char *unused)
 #endif /* HAVE_IPV6 */
 	}
     }
+    zlog_debug("%s: done", __func__);
 }
 
 DEFUN (match_peer,
@@ -3017,10 +3085,11 @@ ALIAS (no_set_metric,
 
 DEFUN (set_local_pref,
        set_local_pref_cmd,
-       "set local-preference <0-4294967295>",
+       "set local-preference (<0-4294967295>|from-med)",
        SET_STR
        "BGP local preference path attribute\n"
-       "Preference value\n")
+       "Preference value\n"
+       "Use 4294967295-MED\n")
 {
   return bgp_route_set_add (vty, vty->index, "local-preference", argv[0]);
 }
@@ -3040,11 +3109,12 @@ DEFUN (no_set_local_pref,
 
 ALIAS (no_set_local_pref,
        no_set_local_pref_val_cmd,
-       "no set local-preference <0-4294967295>",
+       "no set local-preference (<0-4294967295>|from-med)",
        NO_STR
        SET_STR
        "BGP local preference path attribute\n"
-       "Preference value\n")
+       "Preference value\n"
+       "Use 4294967295-MED\n")
 
 DEFUN (set_weight,
        set_weight_cmd,
