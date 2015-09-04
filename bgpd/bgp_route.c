@@ -1689,15 +1689,16 @@ bgp_process_main (struct work_queue *wq, void *data)
     {
       if (new_select 
 	  && new_select->type == ZEBRA_ROUTE_BGP 
-	  && new_select->sub_type == BGP_ROUTE_NORMAL)
+            && (new_select->sub_type == BGP_ROUTE_NORMAL || CHECK_FLAG(new_select->flags, BGP_INFO_FORCE_KERNEL)))
 	bgp_zebra_announce (p, new_select, bgp, safi);
       else
 	{
 	  /* Withdraw the route from the kernel. */
 	  if (old_select 
 	      && old_select->type == ZEBRA_ROUTE_BGP
-	      && old_select->sub_type == BGP_ROUTE_NORMAL)
+	      && (old_select->sub_type == BGP_ROUTE_NORMAL || CHECK_FLAG(old_select->flags, BGP_INFO_FORCE_KERNEL))) {
 	    bgp_zebra_withdraw (p, old_select, safi);
+	  }
 	}
     }
     
@@ -3730,6 +3731,8 @@ bgp_static_update_main (struct bgp *bgp, struct prefix *p,
   new->sub_type = BGP_ROUTE_STATIC;
   new->peer = bgp->peer_self;
   SET_FLAG (new->flags, BGP_INFO_VALID);
+  if (bgp_static->force_kernel_announce)
+      SET_FLAG (new->flags, BGP_INFO_FORCE_KERNEL);
   new->attr = attr_new;
   new->uptime = bgp_clock ();
 
@@ -3983,6 +3986,32 @@ bgp_static_set (struct vty *vty, struct bgp *bgp, const char *ip_str,
   struct bgp_static *bgp_static;
   struct bgp_node *rn;
   u_char need_update = 0;
+  u_char force_kernel = 0;	/* gpz debug */
+  char	 buf[BUFSIZ];
+
+  zlog_debug("%s: entry", __func__);
+
+  {
+    /*
+     * remove trailing ":N" and save valid subtype
+     */
+    int slen = strlen(ip_str);
+    if (slen + 1 - 2 > BUFSIZ) {
+	vty_out (vty, "%% IP string too big%s", VTY_NEWLINE);
+	return CMD_WARNING;
+    }
+
+    if ((slen >= 2) && (ip_str[slen - 2] == ':')) {
+      switch (ip_str[slen - 1]) {
+	case 'k':
+	    force_kernel = 1;
+	    strncpy(buf, ip_str, slen - 2);
+	    buf[slen - 2] = 0;
+	    ip_str = buf;
+	    break;
+      }
+    }
+  }
 
   /* Convert IP prefix string to struct prefix. */
   ret = str2prefix (ip_str, &p);
@@ -4041,6 +4070,7 @@ bgp_static_set (struct vty *vty, struct bgp *bgp, const char *ip_str,
       bgp_static->valid = 0;
       bgp_static->igpmetric = 0;
       bgp_static->igpnexthop.s_addr = 0;
+      bgp_static->force_kernel_announce = force_kernel;
       
       if (rmap)
 	{
@@ -4185,6 +4215,7 @@ bgp_static_set_safi(
   struct bgp_table	*table;
   u_char		tag[3];
   struct bgp_static	*bgp_static;
+  int			force_kernel = 0; /* TBD gpz should be arg? */
 
   bgp = vty->index;
 
@@ -4235,6 +4266,7 @@ bgp_static_set_safi(
       bgp_static->igpnexthop.s_addr = 0;
       memcpy(bgp_static->tag, tag, 3);
       bgp_static->prd = prd;
+      bgp_static->force_kernel_announce = force_kernel;
 
       if (rmap_str)
 	{
@@ -4330,6 +4362,57 @@ DEFUN (bgp_network,
 {
   return bgp_static_set (vty, vty->index, argv[0],
 			 AFI_IP, bgp_node_safi (vty), NULL, 0);
+}
+
+DEFUN (debug_bgp_network_kernel,
+       debug_bgp_network_kernel_cmd,
+       "debug network A.B.C.D/M kernel",
+       "Debugging command\n"
+       "Specify a network to announce via BGP\n"
+       "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n"
+       "Force kernel announce\n"
+       )
+{
+    char	buf[BUFSIZ];
+
+    if (strlen(argv[0]) > (BUFSIZ - 3)) {
+      vty_out (vty, "%% address spec too large%s", VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+    strcpy(buf, argv[0]);
+    strcat(buf, ":");
+    buf[strlen(buf)+1] = 0;
+    buf[strlen(buf)] = 'k';
+
+    /* gpz: IP addr has :X at the end with flag */
+    return bgp_static_set (vty, vty->index, buf, AFI_IP, bgp_node_safi (vty),
+	NULL, 0);
+}
+
+DEFUN (debug_bgp_network_kernel_route_map,
+       debug_bgp_network_kernel_route_map_cmd,
+       "debug network A.B.C.D/M kernel route-map WORD",
+       "Debugging command\n"
+       "Specify a network to announce via BGP\n"
+       "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n"
+       "Force kernel announce\n"
+       "Route-map to modify the attributes\n"
+       "Name of the route map\n")
+{
+    char	buf[BUFSIZ];
+
+    if (strlen(argv[0]) > (BUFSIZ - 3)) {
+      vty_out (vty, "%% address spec too large%s", VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+    strcpy(buf, argv[0]);
+    strcat(buf, ":");
+    buf[strlen(buf)+1] = 0;
+    buf[strlen(buf)] = 'k';
+
+    /* gpz: IP addr has :X at the end with flag */
+    return bgp_static_set (vty, vty->index, buf, AFI_IP, bgp_node_safi (vty),
+	argv[1], 0);
 }
 
 DEFUN (bgp_network_route_map,
@@ -15940,6 +16023,9 @@ bgp_route_init (void)
   bgp_distance_table = bgp_table_init (AFI_IP, SAFI_UNICAST);
 
   /* IPv4 BGP commands. */
+  install_element (BGP_NODE, &debug_bgp_network_kernel_cmd);
+  install_element (BGP_NODE, &debug_bgp_network_kernel_route_map_cmd);
+
   install_element (BGP_NODE, &bgp_network_cmd);
   install_element (BGP_NODE, &bgp_network_mask_cmd);
   install_element (BGP_NODE, &bgp_network_mask_natural_cmd);
