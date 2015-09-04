@@ -2380,9 +2380,13 @@ vtysh_init_vty (void)
   install_node (&rmap_node, NULL);
   install_node (&zebra_node, NULL);
   install_node (&bgp_vpnv4_node, NULL);
+/* #ifdef HAVE_IPV6 */
   install_node (&bgp_vpnv6_node, NULL);
+/* #endif */
   install_node (&bgp_encap_node, NULL);
+/* #ifdef HAVE_IPV6 */
   install_node (&bgp_encapv6_node, NULL);
+/* #endif */
   install_node (&bgp_ipv4_node, NULL);
   install_node (&bgp_ipv4m_node, NULL);
 /* #ifdef HAVE_IPV6 */
@@ -2514,10 +2518,14 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &router_bgp_view_cmd);
   install_element (BGP_NODE, &address_family_vpnv4_cmd);
   install_element (BGP_NODE, &address_family_vpnv4_unicast_cmd);
+#ifdef HAVE_IPV6
   install_element (BGP_NODE, &address_family_vpnv6_cmd);
   install_element (BGP_NODE, &address_family_vpnv6_unicast_cmd);
+#endif
   install_element (BGP_NODE, &address_family_encap_cmd);
+#ifdef HAVE_IPV6
   install_element (BGP_NODE, &address_family_encapv6_cmd);
+#endif
   install_element (BGP_NODE, &address_family_ipv4_unicast_cmd);
   install_element (BGP_NODE, &address_family_ipv4_multicast_cmd);
 #ifdef HAVE_IPV6
@@ -2525,9 +2533,13 @@ vtysh_init_vty (void)
   install_element (BGP_NODE, &address_family_ipv6_unicast_cmd);
 #endif
   install_element (BGP_VPNV4_NODE, &exit_address_family_cmd);
+#ifdef HAVE_IPV6
   install_element (BGP_VPNV6_NODE, &exit_address_family_cmd);
+#endif
   install_element (BGP_ENCAP_NODE, &exit_address_family_cmd);
+#ifdef HAVE_IPV6
   install_element (BGP_ENCAPV6_NODE, &exit_address_family_cmd);
+#endif
   install_element (BGP_IPV4_NODE, &exit_address_family_cmd);
   install_element (BGP_IPV4M_NODE, &exit_address_family_cmd);
   install_element (BGP_IPV6_NODE, &exit_address_family_cmd);
