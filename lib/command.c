@@ -2590,6 +2590,9 @@ node_parent ( enum node_type node )
   switch (node)
     {
     case BGP_VPNV4_NODE:
+    case BGP_VPNV6_NODE:
+    case BGP_ENCAP_NODE:
+    case BGP_ENCAPV6_NODE:
     case BGP_IPV4_NODE:
     case BGP_IPV4M_NODE:
     case BGP_IPV6_NODE:
@@ -2931,9 +2934,12 @@ DEFUN (config_exit,
     case VTY_NODE:
       vty->node = CONFIG_NODE;
       break;
-    case BGP_VPNV4_NODE:
     case BGP_IPV4_NODE:
     case BGP_IPV4M_NODE:
+    case BGP_VPNV4_NODE:
+    case BGP_VPNV6_NODE:
+    case BGP_ENCAP_NODE:
+    case BGP_ENCAPV6_NODE:
     case BGP_IPV6_NODE:
     case BGP_IPV6M_NODE:
       vty->node = BGP_NODE;
@@ -2973,7 +2979,10 @@ DEFUN (config_end,
     case RIPNG_NODE:
     case BABEL_NODE:
     case BGP_NODE:
+    case BGP_ENCAP_NODE:
+    case BGP_ENCAPV6_NODE:
     case BGP_VPNV4_NODE:
+    case BGP_VPNV6_NODE:
     case BGP_IPV4_NODE:
     case BGP_IPV4M_NODE:
     case BGP_IPV6_NODE:

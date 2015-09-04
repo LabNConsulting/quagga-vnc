@@ -35,6 +35,7 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #include "plist.h"
 #include "linklist.h"
 #include "workqueue.h"
+#include "table.h"
 
 #include "bgpd/bgpd.h"
 #include "bgpd/bgp_table.h"
@@ -54,6 +55,7 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #include "bgpd/bgp_nexthop.h"
 #include "bgpd/bgp_damp.h"
 #include "bgpd/bgp_mplsvpn.h"
+#include "bgpd/bgp_encap.h"
 #include "bgpd/bgp_advertise.h"
 #include "bgpd/bgp_network.h"
 #include "bgpd/bgp_vty.h"
@@ -737,6 +739,9 @@ peer_free (struct peer *peer)
   if (peer->clear_node_queue)
     work_queue_free (peer->clear_node_queue);
   
+  if (peer->notify.data)
+    XFREE(MTYPE_TMP, peer->notify.data);
+
   bgp_sync_delete (peer);
   memset (peer, 0, sizeof (struct peer));
   
@@ -782,7 +787,7 @@ peer_unlock_with_caller (const char *name, struct peer *peer)
 }
   
 /* Allocate new peer object, implicitely locked.  */
-static struct peer *
+struct peer *
 peer_new (struct bgp *bgp)
 {
   afi_t afi;
@@ -1317,6 +1322,9 @@ peer_delete (struct peer *peer)
         peer->default_rmap[afi][safi].name = NULL;
       }
   
+  if (CHECK_FLAG(bgp->flags, BGP_FLAG_DELETING))
+    bgp_peer_clear_node_queue_drain_immediate(peer);
+
   peer_unlock (peer); /* initial reference */
 
   return 0;
@@ -1335,6 +1343,7 @@ peer_group_active (struct peer *peer)
   if (peer->af_group[AFI_IP][SAFI_UNICAST]
       || peer->af_group[AFI_IP][SAFI_MULTICAST]
       || peer->af_group[AFI_IP][SAFI_MPLS_VPN]
+      || peer->af_group[AFI_IP][SAFI_ENCAP]
       || peer->af_group[AFI_IP6][SAFI_UNICAST]
       || peer->af_group[AFI_IP6][SAFI_MULTICAST])
     return 1;
@@ -1988,7 +1997,7 @@ bgp_create (as_t *as, const char *name)
 struct bgp *
 bgp_get_default (void)
 {
-  if (bm->bgp->head)
+  if (bm && bm->bgp && bm->bgp->head)
     return (listgetdata (listhead (bm->bgp)));
   return NULL;
 }
@@ -2097,6 +2106,8 @@ bgp_delete (struct bgp *bgp)
   afi_t afi;
   int i;
 
+  SET_FLAG(bgp->flags, BGP_FLAG_DELETING);
+
   THREAD_OFF (bgp->t_startup);
 
   /* Delete static route. */
@@ -2138,7 +2149,21 @@ bgp_delete (struct bgp *bgp)
     peer_delete(bgp->peer_self);
     bgp->peer_self = NULL;
   }
+
+  /*
+   * Free pending deleted routes. Unfortunately, it also has to process
+   * all the pending activity for other instances of struct bgp.
+   *
+   * This call was added to achieve clean memory allocation at exit,
+   * for the sake of valgrind.
+   */
+  bgp_process_queues_drain_immediate();
   
+  bgp_zebra_destroy();
+  bgp_scan_destroy();
+  bgp_address_destroy();
+  
+
   /* Remove visibility via the master list - there may however still be
    * routes to be processed still referencing the struct bgp.
    */
@@ -2269,8 +2294,11 @@ peer_active (struct peer *peer)
   if (peer->afc[AFI_IP][SAFI_UNICAST]
       || peer->afc[AFI_IP][SAFI_MULTICAST]
       || peer->afc[AFI_IP][SAFI_MPLS_VPN]
+      || peer->afc[AFI_IP][SAFI_ENCAP]
       || peer->afc[AFI_IP6][SAFI_UNICAST]
-      || peer->afc[AFI_IP6][SAFI_MULTICAST])
+      || peer->afc[AFI_IP6][SAFI_MULTICAST]
+      || peer->afc[AFI_IP6][SAFI_MPLS_VPN]
+      || peer->afc[AFI_IP6][SAFI_ENCAP])
     return 1;
   return 0;
 }
@@ -2282,8 +2310,11 @@ peer_active_nego (struct peer *peer)
   if (peer->afc_nego[AFI_IP][SAFI_UNICAST]
       || peer->afc_nego[AFI_IP][SAFI_MULTICAST]
       || peer->afc_nego[AFI_IP][SAFI_MPLS_VPN]
+      || peer->afc_nego[AFI_IP][SAFI_ENCAP]
       || peer->afc_nego[AFI_IP6][SAFI_UNICAST]
-      || peer->afc_nego[AFI_IP6][SAFI_MULTICAST])
+      || peer->afc_nego[AFI_IP6][SAFI_MULTICAST]
+      || peer->afc[AFI_IP6][SAFI_MPLS_VPN]
+      || peer->afc[AFI_IP6][SAFI_ENCAP])
     return 1;
   return 0;
 }
@@ -5126,6 +5157,8 @@ bgp_config_write_peer (struct vty *vty, struct bgp *bgp,
 	     (CHECK_FLAG (peer->af_flags[afi][safi], PEER_FLAG_MED_UNCHANGED)) ?
 	     " med" : "", VTY_NEWLINE);
     }
+  if (afi == AFI_IP && safi == SAFI_UNICAST)
+      vty_out (vty, "!%s", VTY_NEWLINE); /* separate top-level neighbors for readability */
 }
 
 /* Display "address-family" configuration header. */
@@ -5139,21 +5172,28 @@ bgp_config_write_family_header (struct vty *vty, afi_t afi, safi_t safi,
   if (afi == AFI_IP && safi == SAFI_UNICAST)
     return;
 
-  vty_out (vty, "!%s address-family ", VTY_NEWLINE);
+  vty_out (vty, " address-family ");
 
   if (afi == AFI_IP)
     {
       if (safi == SAFI_MULTICAST)
 	vty_out (vty, "ipv4 multicast");
       else if (safi == SAFI_MPLS_VPN)
-	vty_out (vty, "vpnv4 unicast");
+	vty_out (vty, "vpnv4");
+      else if (safi == SAFI_ENCAP)
+	vty_out (vty, "encap");
     }
   else if (afi == AFI_IP6)
     {
-      vty_out (vty, "ipv6");
-      
-      if (safi == SAFI_MULTICAST)
-        vty_out (vty, " multicast");
+      if (safi == SAFI_MPLS_VPN)
+	vty_out (vty, "vpnv6");
+      else if (safi == SAFI_ENCAP)
+	vty_out (vty, "encapv6");
+      else {
+          vty_out (vty, "ipv6");
+          if (safi == SAFI_MULTICAST)
+              vty_out (vty, " multicast");
+      }
     }
 
   vty_out (vty, "%s", VTY_NEWLINE);
@@ -5198,7 +5238,7 @@ bgp_config_write_family (struct vty *vty, struct bgp *bgp, afi_t afi,
   bgp_config_write_maxpaths (vty, bgp, afi, safi, &write);
 
   if (write)
-    vty_out (vty, " exit-address-family%s", VTY_NEWLINE);
+    vty_out (vty, " exit-address-family%s!%s", VTY_NEWLINE, VTY_NEWLINE);
 
   return write;
 }
@@ -5389,11 +5429,22 @@ bgp_config_write (struct vty *vty)
       /* IPv4 VPN configuration.  */
       write += bgp_config_write_family (vty, bgp, AFI_IP, SAFI_MPLS_VPN);
 
+      /* ENCAPv4 configuration.  */
+      write += bgp_config_write_family (vty, bgp, AFI_IP, SAFI_ENCAP);
+
       /* IPv6 unicast configuration.  */
       write += bgp_config_write_family (vty, bgp, AFI_IP6, SAFI_UNICAST);
 
       /* IPv6 multicast configuration.  */
       write += bgp_config_write_family (vty, bgp, AFI_IP6, SAFI_MULTICAST);
+
+      /* IPv4 VPN configuration.  */
+      write += bgp_config_write_family (vty, bgp, AFI_IP6, SAFI_MPLS_VPN);
+
+      /* ENCAPv6 configuration.  */
+      write += bgp_config_write_family (vty, bgp, AFI_IP6, SAFI_ENCAP);
+
+      vty_out (vty, " exit%s", VTY_NEWLINE);
 
       write++;
     }
@@ -5432,6 +5483,7 @@ bgp_init (void)
   bgp_address_init ();
   bgp_scan_init ();
   bgp_mplsvpn_init ();
+  bgp_encap_init ();
 
   /* Access list initialize. */
   access_list_init ();
@@ -5467,8 +5519,8 @@ bgp_terminate (void)
   for (ALL_LIST_ELEMENTS (bm->bgp, mnode, mnnode, bgp))
     for (ALL_LIST_ELEMENTS (bgp->peer, node, nnode, peer))
       if (peer->status == Established)
-          bgp_notify_send (peer, BGP_NOTIFY_CEASE,
-                           BGP_NOTIFY_CEASE_PEER_UNCONFIG);
+        bgp_notify_send (peer, BGP_NOTIFY_CEASE,
+                         BGP_NOTIFY_CEASE_PEER_UNCONFIG);
   
   bgp_cleanup_routes ();
   

@@ -56,8 +56,15 @@ extern struct in_addr router_id_zebra;
 afi_t
 bgp_node_afi (struct vty *vty)
 {
-  if (vty->node == BGP_IPV6_NODE || vty->node == BGP_IPV6M_NODE)
-    return AFI_IP6;
+  switch (vty->node) {
+    case BGP_IPV6_NODE:
+    case BGP_IPV6M_NODE:
+    case BGP_VPNV6_NODE:
+    case BGP_ENCAPV6_NODE:
+	return AFI_IP6;
+	break;
+  }
+
   return AFI_IP;
 }
 
@@ -66,11 +73,55 @@ bgp_node_afi (struct vty *vty)
 safi_t
 bgp_node_safi (struct vty *vty)
 {
+  if (vty->node == BGP_ENCAP_NODE)
+    return SAFI_ENCAP;
+  if (vty->node == BGP_ENCAPV6_NODE)
+    return SAFI_ENCAP;
+  if (vty->node == BGP_VPNV6_NODE)
+    return SAFI_MPLS_VPN;
   if (vty->node == BGP_VPNV4_NODE)
     return SAFI_MPLS_VPN;
   if (vty->node == BGP_IPV4M_NODE || vty->node == BGP_IPV6M_NODE)
     return SAFI_MULTICAST;
   return SAFI_UNICAST;
+}
+
+int
+bgp_parse_afi(const char *str, afi_t *afi)
+{
+    if (!strcmp(str, "ipv4")) {
+	*afi = AFI_IP;
+	return 0;
+    }
+#ifdef HAVE_IPV6
+    if (!strcmp(str, "ipv6")) {
+	*afi = AFI_IP6;
+	return 0;
+    }
+#endif /* HAVE_IPV6 */
+    return -1;
+}
+
+int
+bgp_parse_safi(const char *str, safi_t *safi)
+{
+    if (!strcmp(str, "encap")) {
+	*safi = SAFI_ENCAP;
+	return 0;
+    }
+    if (!strcmp(str, "multicast")) {
+	*safi =  SAFI_MULTICAST;
+	return 0;
+    }
+    if (!strcmp(str, "unicast")) {
+	*safi =  SAFI_UNICAST;
+	return 0;
+    }
+    if (!strcmp(str, "vpn")) {
+	*safi =  SAFI_MPLS_VPN;
+	return 0;
+    }
+    return -1;
 }
 
 static int
@@ -325,7 +376,7 @@ DEFUN (router_bgp,
 {
   int ret;
   as_t as;
-  struct bgp *bgp;
+  struct bgp *bgp  = NULL;
   const char *name = NULL;
 
   VTY_GET_INTEGER_RANGE ("AS", as, argv[0], 1, BGP_AS4_MAX);
@@ -348,6 +399,8 @@ DEFUN (router_bgp,
       vty_out (vty, "BGP instance is already running; AS is %u%s",
 	       as, VTY_NEWLINE);
       return CMD_WARNING;
+    case BGP_ERR_INVALID_VALUE:
+      return CMD_SUCCESS_DAEMON;
     }
 
   vty->node = BGP_NODE;
@@ -4284,14 +4337,61 @@ ALIAS (address_family_vpnv4,
        "Address family\n"
        "Address Family Modifier\n")
 
+DEFUN (address_family_vpnv6,
+       address_family_vpnv6_cmd,
+       "address-family vpnv6",
+       "Enter Address Family command mode\n"
+       "Address family\n")
+{
+  vty->node = BGP_VPNV6_NODE;
+  return CMD_SUCCESS;
+}
+
+ALIAS (address_family_vpnv6,
+       address_family_vpnv6_unicast_cmd,
+       "address-family vpnv6 unicast",
+       "Enter Address Family command mode\n"
+       "Address family\n"
+       "Address Family Modifier\n")
+
+DEFUN (address_family_encap,
+       address_family_encap_cmd,
+       "address-family encap",
+       "Enter Address Family command mode\n"
+       "Address family\n")
+{
+  vty->node = BGP_ENCAP_NODE;
+  return CMD_SUCCESS;
+}
+
+ALIAS (address_family_encap,
+       address_family_encapv4_cmd,
+       "address-family encapv4",
+       "Enter Address Family command mode\n"
+       "Address family\n")
+
+DEFUN (address_family_encapv6,
+       address_family_encapv6_cmd,
+       "address-family encapv6",
+       "Enter Address Family command mode\n"
+       "Address family\n")
+{
+  vty->node = BGP_ENCAPV6_NODE;
+  return CMD_SUCCESS;
+}
+
 DEFUN (exit_address_family,
        exit_address_family_cmd,
        "exit-address-family",
        "Exit from Address Family configuration mode\n")
 {
+  /* should match list in command.c:config_exit */
   if (vty->node == BGP_IPV4_NODE
+      || vty->node == BGP_ENCAP_NODE
+      || vty->node == BGP_ENCAPV6_NODE
       || vty->node == BGP_IPV4M_NODE
       || vty->node == BGP_VPNV4_NODE
+      || vty->node == BGP_VPNV6_NODE
       || vty->node == BGP_IPV6_NODE
       || vty->node == BGP_IPV6M_NODE)
     vty->node = BGP_NODE;
@@ -4774,6 +4874,33 @@ ALIAS (clear_ip_bgp_all_vpnv4_soft_out,
        "Address Family Modifier\n"
        "Soft reconfig outbound update\n")
 
+DEFUN (clear_ip_bgp_all_encap_soft_out,
+       clear_ip_bgp_all_encap_soft_out_cmd,
+       "clear ip bgp * encap unicast soft out",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "Clear all peers\n"
+       "Address family\n"
+       "Address Family Modifier\n"
+       "Soft reconfig\n"
+       "Soft reconfig outbound update\n")
+{
+  return bgp_clear_vty (vty, NULL, AFI_IP, SAFI_ENCAP, clear_all,
+			BGP_CLEAR_SOFT_OUT, NULL);
+}
+
+ALIAS (clear_ip_bgp_all_encap_soft_out,
+       clear_ip_bgp_all_encap_out_cmd,
+       "clear ip bgp * encap unicast out",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "Clear all peers\n"
+       "Address family\n"
+       "Address Family Modifier\n"
+       "Soft reconfig outbound update\n")
+
 DEFUN (clear_bgp_all_soft_out,
        clear_bgp_all_soft_out_cmd,
        "clear bgp * soft out",
@@ -4904,6 +5031,33 @@ DEFUN (clear_ip_bgp_peer_vpnv4_soft_out,
 ALIAS (clear_ip_bgp_peer_vpnv4_soft_out,
        clear_ip_bgp_peer_vpnv4_out_cmd,
        "clear ip bgp A.B.C.D vpnv4 unicast out",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "BGP neighbor address to clear\n"
+       "Address family\n"
+       "Address Family Modifier\n"
+       "Soft reconfig outbound update\n")
+
+DEFUN (clear_ip_bgp_peer_encap_soft_out,
+       clear_ip_bgp_peer_encap_soft_out_cmd,
+       "clear ip bgp A.B.C.D encap unicast soft out",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "BGP neighbor address to clear\n"
+       "Address family\n"
+       "Address Family Modifier\n"
+       "Soft reconfig\n"
+       "Soft reconfig outbound update\n")
+{
+  return bgp_clear_vty (vty, NULL, AFI_IP, SAFI_ENCAP, clear_peer,
+			BGP_CLEAR_SOFT_OUT, argv[0]);
+}
+
+ALIAS (clear_ip_bgp_peer_encap_soft_out,
+       clear_ip_bgp_peer_encap_out_cmd,
+       "clear ip bgp A.B.C.D encap unicast out",
        CLEAR_STR
        IP_STR
        BGP_STR
@@ -5239,6 +5393,33 @@ ALIAS (clear_ip_bgp_as_vpnv4_soft_out,
        "Address Family modifier\n"
        "Soft reconfig outbound update\n")
 
+DEFUN (clear_ip_bgp_as_encap_soft_out,
+       clear_ip_bgp_as_encap_soft_out_cmd,
+       "clear ip bgp " CMD_AS_RANGE " encap unicast soft out",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "Clear peers with the AS number\n"
+       "Address family\n"
+       "Address Family modifier\n"
+       "Soft reconfig\n"
+       "Soft reconfig outbound update\n")
+{
+  return bgp_clear_vty (vty, NULL, AFI_IP, SAFI_ENCAP, clear_as,
+			BGP_CLEAR_SOFT_OUT, argv[0]);
+}
+
+ALIAS (clear_ip_bgp_as_encap_soft_out,
+       clear_ip_bgp_as_encap_out_cmd,
+       "clear ip bgp " CMD_AS_RANGE " encap unicast out",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "Clear peers with the AS number\n"
+       "Address family\n"
+       "Address Family modifier\n"
+       "Soft reconfig outbound update\n")
+
 DEFUN (clear_bgp_as_soft_out,
        clear_bgp_as_soft_out_cmd,
        "clear bgp " CMD_AS_RANGE " soft out",
@@ -5475,6 +5656,33 @@ ALIAS (clear_ip_bgp_all_vpnv4_soft_in,
        "Address Family Modifier\n"
        "Soft reconfig inbound update\n")
 
+DEFUN (clear_ip_bgp_all_encap_soft_in,
+       clear_ip_bgp_all_encap_soft_in_cmd,
+       "clear ip bgp * encap unicast soft in",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "Clear all peers\n"
+       "Address family\n"
+       "Address Family Modifier\n"
+       "Soft reconfig\n"
+       "Soft reconfig inbound update\n")
+{
+  return bgp_clear_vty (vty, NULL, AFI_IP, SAFI_ENCAP, clear_all,
+			BGP_CLEAR_SOFT_IN, NULL);
+}
+
+ALIAS (clear_ip_bgp_all_encap_soft_in,
+       clear_ip_bgp_all_encap_in_cmd,
+       "clear ip bgp * encap unicast in",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "Clear all peers\n"
+       "Address family\n"
+       "Address Family Modifier\n"
+       "Soft reconfig inbound update\n")
+
 DEFUN (clear_bgp_all_soft_in,
        clear_bgp_all_soft_in_cmd,
        "clear bgp * soft in",
@@ -5663,6 +5871,33 @@ DEFUN (clear_ip_bgp_peer_vpnv4_soft_in,
 ALIAS (clear_ip_bgp_peer_vpnv4_soft_in,
        clear_ip_bgp_peer_vpnv4_in_cmd,
        "clear ip bgp A.B.C.D vpnv4 unicast in",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "BGP neighbor address to clear\n"
+       "Address family\n"
+       "Address Family Modifier\n"
+       "Soft reconfig inbound update\n")
+
+DEFUN (clear_ip_bgp_peer_encap_soft_in,
+       clear_ip_bgp_peer_encap_soft_in_cmd,
+       "clear ip bgp A.B.C.D encap unicast soft in",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "BGP neighbor address to clear\n"
+       "Address family\n"
+       "Address Family Modifier\n"
+       "Soft reconfig\n"
+       "Soft reconfig inbound update\n")
+{
+  return bgp_clear_vty (vty, NULL, AFI_IP, SAFI_ENCAP, clear_peer,
+			BGP_CLEAR_SOFT_IN, argv[0]);
+}
+
+ALIAS (clear_ip_bgp_peer_encap_soft_in,
+       clear_ip_bgp_peer_encap_in_cmd,
+       "clear ip bgp A.B.C.D encap unicast in",
        CLEAR_STR
        IP_STR
        BGP_STR
@@ -6178,6 +6413,33 @@ ALIAS (clear_ip_bgp_as_vpnv4_soft_in,
        "Address Family modifier\n"
        "Soft reconfig inbound update\n")
 
+DEFUN (clear_ip_bgp_as_encap_soft_in,
+       clear_ip_bgp_as_encap_soft_in_cmd,
+       "clear ip bgp " CMD_AS_RANGE " encap unicast soft in",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "Clear peers with the AS number\n"
+       "Address family\n"
+       "Address Family modifier\n"
+       "Soft reconfig\n"
+       "Soft reconfig inbound update\n")
+{
+  return bgp_clear_vty (vty, NULL, AFI_IP, SAFI_ENCAP, clear_as,
+			BGP_CLEAR_SOFT_IN, argv[0]);
+}
+
+ALIAS (clear_ip_bgp_as_encap_soft_in,
+       clear_ip_bgp_as_encap_in_cmd,
+       "clear ip bgp " CMD_AS_RANGE " encap unicast in",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "Clear peers with the AS number\n"
+       "Address family\n"
+       "Address Family modifier\n"
+       "Soft reconfig inbound update\n")
+
 DEFUN (clear_bgp_as_soft_in,
        clear_bgp_as_soft_in_cmd,
        "clear bgp " CMD_AS_RANGE " soft in",
@@ -6328,6 +6590,21 @@ DEFUN (clear_ip_bgp_all_vpnv4_soft,
 			BGP_CLEAR_SOFT_BOTH, argv[0]);
 }
 
+DEFUN (clear_ip_bgp_all_encap_soft,
+       clear_ip_bgp_all_encap_soft_cmd,
+       "clear ip bgp * encap unicast soft",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "Clear all peers\n"
+       "Address family\n"
+       "Address Family Modifier\n"
+       "Soft reconfig\n")
+{
+  return bgp_clear_vty (vty, NULL, AFI_IP, SAFI_ENCAP, clear_all,
+			BGP_CLEAR_SOFT_BOTH, argv[0]);
+}
+
 DEFUN (clear_bgp_all_soft,
        clear_bgp_all_soft_cmd,
        "clear bgp * soft",
@@ -6408,6 +6685,21 @@ DEFUN (clear_ip_bgp_peer_vpnv4_soft,
        "Soft reconfig\n")
 {
   return bgp_clear_vty (vty, NULL, AFI_IP, SAFI_MPLS_VPN, clear_peer,
+			BGP_CLEAR_SOFT_BOTH, argv[0]);
+}
+
+DEFUN (clear_ip_bgp_peer_encap_soft,
+       clear_ip_bgp_peer_encap_soft_cmd,
+       "clear ip bgp A.B.C.D encap unicast soft",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "BGP neighbor address to clear\n"
+       "Address family\n"
+       "Address Family Modifier\n"
+       "Soft reconfig\n")
+{
+  return bgp_clear_vty (vty, NULL, AFI_IP, SAFI_ENCAP, clear_peer,
 			BGP_CLEAR_SOFT_BOTH, argv[0]);
 }
 
@@ -6591,6 +6883,21 @@ DEFUN (clear_ip_bgp_as_vpnv4_soft,
        "Soft reconfig\n")
 {
   return bgp_clear_vty (vty, NULL, AFI_IP, SAFI_MPLS_VPN, clear_as,
+			BGP_CLEAR_SOFT_BOTH, argv[0]);
+}
+
+DEFUN (clear_ip_bgp_as_encap_soft,
+       clear_ip_bgp_as_encap_soft_cmd,
+       "clear ip bgp " CMD_AS_RANGE " encap unicast soft",
+       CLEAR_STR
+       IP_STR
+       BGP_STR
+       "Clear peers with the AS number\n"
+       "Address family\n"
+       "Address Family Modifier\n"
+       "Soft reconfig\n")
+{
+  return bgp_clear_vty (vty, NULL, AFI_IP, SAFI_ENCAP, clear_as,
 			BGP_CLEAR_SOFT_BOTH, argv[0]);
 }
 
@@ -7028,7 +7335,7 @@ bgp_show_summary (struct vty *vty, struct bgp *bgp, int afi, int safi)
 	      if (CHECK_FLAG (peer->flags, PEER_FLAG_SHUTDOWN))
 		vty_out (vty, " Idle (Admin)");
 	      else if (CHECK_FLAG (peer->sflags, PEER_STATUS_PREFIX_OVERFLOW))
-		vty_out (vty, " Idle (PfxCt)");
+		vty_out (vty, " Idle (PfxUn)");
 	      else
 		vty_out (vty, " %-11s", LOOKUP(bgp_status_msg, peer->status));
 	    }
@@ -7075,35 +7382,10 @@ bgp_show_summary_vty (struct vty *vty, const char *name,
 }
 
 /* `show ip bgp summary' commands. */
-DEFUN (show_ip_bgp_summary, 
-       show_ip_bgp_summary_cmd,
-       "show ip bgp summary",
+DEFUN (show_bgp_ipv4_safi_summary,
+       show_bgp_ipv4_safi_summary_cmd,
+       "show bgp ipv4 (unicast|multicast) summary",
        SHOW_STR
-       IP_STR
-       BGP_STR
-       "Summary of BGP neighbor status\n")
-{
-  return bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_UNICAST);
-}
-
-DEFUN (show_ip_bgp_instance_summary,
-       show_ip_bgp_instance_summary_cmd,
-       "show ip bgp view WORD summary",
-       SHOW_STR
-       IP_STR
-       BGP_STR
-       "BGP view\n"
-       "View name\n"
-       "Summary of BGP neighbor status\n")
-{
-  return bgp_show_summary_vty (vty, argv[0], AFI_IP, SAFI_UNICAST);  
-}
-
-DEFUN (show_ip_bgp_ipv4_summary, 
-       show_ip_bgp_ipv4_summary_cmd,
-       "show ip bgp ipv4 (unicast|multicast) summary",
-       SHOW_STR
-       IP_STR
        BGP_STR
        "Address family\n"
        "Address Family modifier\n"
@@ -7116,21 +7398,10 @@ DEFUN (show_ip_bgp_ipv4_summary,
   return bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_UNICAST);
 }
 
-ALIAS (show_ip_bgp_ipv4_summary,
-       show_bgp_ipv4_safi_summary_cmd,
-       "show bgp ipv4 (unicast|multicast) summary",
+DEFUN (show_bgp_instance_ipv4_safi_summary,
+       show_bgp_instance_ipv4_safi_summary_cmd,
+       "show bgp view WORD ipv4 (unicast|multicast) summary",
        SHOW_STR
-       BGP_STR
-       "Address family\n"
-       "Address Family modifier\n"
-       "Address Family modifier\n"
-       "Summary of BGP neighbor status\n")
-
-DEFUN (show_ip_bgp_instance_ipv4_summary,
-       show_ip_bgp_instance_ipv4_summary_cmd,
-       "show ip bgp view WORD ipv4 (unicast|multicast) summary",
-       SHOW_STR
-       IP_STR
        BGP_STR
        "BGP view\n"
        "View name\n"
@@ -7145,65 +7416,63 @@ DEFUN (show_ip_bgp_instance_ipv4_summary,
     return bgp_show_summary_vty (vty, argv[0], AFI_IP, SAFI_UNICAST);
 }
 
-ALIAS (show_ip_bgp_instance_ipv4_summary,
-       show_bgp_instance_ipv4_safi_summary_cmd,
-       "show bgp view WORD ipv4 (unicast|multicast) summary",
+DEFUN (show_bgp_ipv4_vpn_summary,
+       show_bgp_ipv4_vpn_summary_cmd,
+       "show bgp ipv4 vpn summary",
        SHOW_STR
        BGP_STR
-       "BGP view\n"
-       "View name\n"
-       "Address family\n"
-       "Address Family modifier\n"
-       "Address Family modifier\n"
-       "Summary of BGP neighbor status\n")
-
-DEFUN (show_ip_bgp_vpnv4_all_summary,
-       show_ip_bgp_vpnv4_all_summary_cmd,
-       "show ip bgp vpnv4 all summary",
-       SHOW_STR
-       IP_STR
-       BGP_STR
-       "Display VPNv4 NLRI specific information\n"
-       "Display information about all VPNv4 NLRIs\n"
+       "IPv4\n"
+       "Display VPN NLRI specific information\n"
        "Summary of BGP neighbor status\n")
 {
-  return bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_MPLS_VPN);
-}
-
-DEFUN (show_ip_bgp_vpnv4_rd_summary,
-       show_ip_bgp_vpnv4_rd_summary_cmd,
-       "show ip bgp vpnv4 rd ASN:nn_or_IP-address:nn summary",
-       SHOW_STR
-       IP_STR
-       BGP_STR
-       "Display VPNv4 NLRI specific information\n"
-       "Display information for a route distinguisher\n"
-       "VPN Route Distinguisher\n"
-       "Summary of BGP neighbor status\n")
-{
-  int ret;
-  struct prefix_rd prd;
-
-  ret = str2prefix_rd (argv[0], &prd);
-  if (! ret)
-    {
-      vty_out (vty, "%% Malformed Route Distinguisher%s", VTY_NEWLINE);
-      return CMD_WARNING;
-    }
-
   return bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_MPLS_VPN);
 }
 
 #ifdef HAVE_IPV6
-DEFUN (show_bgp_summary, 
-       show_bgp_summary_cmd,
-       "show bgp summary",
+
+/* `show ip bgp summary' commands. */
+DEFUN (show_bgp_ipv6_vpn_summary,
+       show_bgp_ipv6_vpn_summary_cmd,
+       "show bgp ipv6 vpn summary",
        SHOW_STR
        BGP_STR
+       "IPv6\n"
+       "Display VPN NLRI specific information\n"
        "Summary of BGP neighbor status\n")
 {
-  return bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_UNICAST);
+  return bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_MPLS_VPN);
 }
+#endif
+
+DEFUN (show_bgp_ipv4_encap_summary,
+       show_bgp_ipv4_encap_summary_cmd,
+       "show bgp ipv4 encap summary",
+       SHOW_STR
+       BGP_STR
+       "IPv4\n"
+       "Display ENCAP NLRI specific information\n"
+       "Summary of BGP neighbor status\n")
+{
+  return bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_ENCAP);
+}
+
+#ifdef HAVE_IPV6
+
+DEFUN (show_bgp_ipv6_encap_summary,
+       show_bgp_ipv6_encap_summary_cmd,
+       "show bgp ipv6 encap summary",
+       SHOW_STR
+       BGP_STR
+       "IPv6\n"
+       "Display ENCAP NLRI specific information\n"
+       "Summary of BGP neighbor status\n")
+{
+  return bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_ENCAP);
+}
+
+#endif
+
+
 
 DEFUN (show_bgp_instance_summary,
        show_bgp_instance_summary_cmd,
@@ -7214,26 +7483,93 @@ DEFUN (show_bgp_instance_summary,
        "View name\n"
        "Summary of BGP neighbor status\n")
 {
-  return bgp_show_summary_vty (vty, argv[0], AFI_IP6, SAFI_UNICAST);
+    vty_out(vty, "%sIPv4 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP, SAFI_UNICAST);
+    vty_out(vty, "%sIPv4 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv4 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv4 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP, SAFI_ENCAP);
+
+#ifdef HAVE_IPV6
+    vty_out(vty, "%sIPv6 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP6, SAFI_UNICAST);
+    vty_out(vty, "%sIPv6 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP6, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv6 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP6, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv6 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP6, SAFI_ENCAP);
+#endif
+    return CMD_SUCCESS;
 }
 
-ALIAS (show_bgp_summary, 
-       show_bgp_ipv6_summary_cmd,
-       "show bgp ipv6 summary",
+DEFUN (show_bgp_instance_ipv4_summary,
+       show_bgp_instance_ipv4_summary_cmd,
+       "show bgp view WORD ipv4 summary",
        SHOW_STR
        BGP_STR
-       "Address family\n"
+       IP_STR
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "BGP view\n"
+       "View name\n"
        "Summary of BGP neighbor status\n")
+{
+    vty_out(vty, "%sIPv4 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP, SAFI_UNICAST);
+    vty_out(vty, "%sIPv4 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv4 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv4 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP, SAFI_ENCAP);
 
-ALIAS (show_bgp_instance_summary,
+    return CMD_SUCCESS;
+}
+
+
+#ifdef HAVE_IPV6
+DEFUN (show_bgp_instance_ipv6_summary,
        show_bgp_instance_ipv6_summary_cmd,
        "show bgp view WORD ipv6 summary",
        SHOW_STR
        BGP_STR
+       IPV6_STR
+       "Address Family modifier\n"
+       "Address Family modifier\n"
        "BGP view\n"
        "View name\n"
-       "Address family\n"
        "Summary of BGP neighbor status\n")
+{
+    vty_out(vty, "%sIPv6 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP6, SAFI_UNICAST);
+    vty_out(vty, "%sIPv6 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP6, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv6 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP6, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv6 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, argv[0], AFI_IP6, SAFI_ENCAP);
+
+    return CMD_SUCCESS;
+}
 
 DEFUN (show_bgp_ipv6_safi_summary,
        show_bgp_ipv6_safi_summary_cmd,
@@ -7247,7 +7583,6 @@ DEFUN (show_bgp_ipv6_safi_summary,
 {
   if (strncmp (argv[0], "m", 1) == 0)
     return bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_MULTICAST);
-
   return bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_UNICAST);
 }
 
@@ -7269,30 +7604,152 @@ DEFUN (show_bgp_instance_ipv6_safi_summary,
   return bgp_show_summary_vty (vty, argv[0], AFI_IP6, SAFI_UNICAST);
 }
 
-/* old command */
-DEFUN (show_ipv6_bgp_summary, 
-       show_ipv6_bgp_summary_cmd,
-       "show ipv6 bgp summary",
+#endif /* HAVE_IPV6 */
+
+/* variations of show bgp [...] summary */
+
+/* This one is for the 0-keyword variant */
+DEFUN (show_bgp_summary,
+       show_bgp_summary_cmd,
+       "show bgp summary",
        SHOW_STR
-       IPV6_STR
        BGP_STR
        "Summary of BGP neighbor status\n")
 {
-  return bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_UNICAST);
+    vty_out(vty, "%sIPv4 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_UNICAST);
+    vty_out(vty, "%sIPv4 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv4 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv4 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_ENCAP);
+
+#ifdef HAVE_IPV6
+    vty_out(vty, "%sIPv6 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_UNICAST);
+    vty_out(vty, "%sIPv6 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv6 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv6 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_ENCAP);
+#endif
+    return CMD_SUCCESS;
 }
 
-/* old command */
-DEFUN (show_ipv6_mbgp_summary, 
-       show_ipv6_mbgp_summary_cmd,
-       "show ipv6 mbgp summary",
+DEFUN (show_bgp_summary_1w,
+       show_bgp_summary_1w_cmd,
+#ifdef HAVE_IPV6
+       "show bgp (ipv4|ipv6|unicast|multicast|vpn|encap) summary",
+#else
+       "show bgp (ipv4|unicast|multicast|vpn|encap) summary",
+#endif
        SHOW_STR
-       IPV6_STR
-       MBGP_STR
+       BGP_STR
+       IP_STR
+#ifdef HAVE_IPV6
+       IP6_STR
+#endif
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
        "Summary of BGP neighbor status\n")
 {
-  return bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_MULTICAST);
+  if (strcmp (argv[0], "ipv4") == 0) {
+    vty_out(vty, "%sIPv4 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_UNICAST);
+    vty_out(vty, "%sIPv4 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv4 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv4 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_ENCAP);
+    return CMD_SUCCESS;
+  }
+#ifdef HAVE_IPV6
+  if (strcmp (argv[0], "ipv6") == 0) {
+    vty_out(vty, "%sIPv6 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_UNICAST);
+    vty_out(vty, "%sIPv6 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv6 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv6 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_ENCAP);
+    return CMD_SUCCESS;
+  }
+#endif
+  if (strcmp (argv[0], "unicast") == 0) {
+    vty_out(vty, "IPv4 Unicast Summary:%s", VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_UNICAST);
+#ifdef HAVE_IPV6
+    vty_out(vty, "%s", VTY_NEWLINE);
+    vty_out(vty, "IPv6 Unicast Summary:%s", VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_UNICAST);
+#endif
+    return CMD_SUCCESS;
+  }
+  if (strcmp (argv[0], "multicast") == 0) {
+    vty_out(vty, "IPv4 Multicast Summary:%s", VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_MULTICAST);
+#ifdef HAVE_IPV6
+    vty_out(vty, "%s", VTY_NEWLINE);
+    vty_out(vty, "IPv6 Multicast Summary:%s", VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_MULTICAST);
+#endif
+    return CMD_SUCCESS;
+  }
+  if (strcmp (argv[0], "vpn") == 0) {
+    vty_out(vty, "IPv4 VPN Summary:%s", VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_MPLS_VPN);
+#ifdef HAVE_IPV6
+    vty_out(vty, "%s", VTY_NEWLINE);
+    vty_out(vty, "IPv6 VPN Summary:%s", VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_MPLS_VPN);
+#endif
+    return CMD_SUCCESS;
+  }
+  if (strcmp (argv[0], "encap") == 0) {
+    vty_out(vty, "IPv4 Encap Summary:%s", VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_ENCAP);
+#ifdef HAVE_IPV6
+    vty_out(vty, "%s", VTY_NEWLINE);
+    vty_out(vty, "IPv6 Encap Summary:%s", VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_ENCAP);
+#endif
+    return CMD_SUCCESS;
+  }
+  vty_out(vty, "Unknown keyword: %s%s", argv[0], VTY_NEWLINE);
+  return CMD_WARNING;
 }
-#endif /* HAVE_IPV6 */
+
+
 
 const char *
 afi_safi_print (afi_t afi, safi_t safi)
@@ -7302,11 +7759,17 @@ afi_safi_print (afi_t afi, safi_t safi)
   else if (afi == AFI_IP && safi == SAFI_MULTICAST)
     return "IPv4 Multicast";
   else if (afi == AFI_IP && safi == SAFI_MPLS_VPN)
-    return "VPNv4 Unicast";
+    return "VPN-IPv4 Unicast";
+  else if (afi == AFI_IP && safi == SAFI_ENCAP)
+    return "ENCAP-IPv4 Unicast";
   else if (afi == AFI_IP6 && safi == SAFI_UNICAST)
     return "IPv6 Unicast";
   else if (afi == AFI_IP6 && safi == SAFI_MULTICAST)
     return "IPv6 Multicast";
+  else if (afi == AFI_IP6 && safi == SAFI_MPLS_VPN)
+    return "VPN-IPv6 Unicast";
+  else if (afi == AFI_IP6 && safi == SAFI_ENCAP)
+    return "ENCAP-IPv6 Unicast";
   else
     return "Unknown";
 }
@@ -7649,7 +8112,13 @@ bgp_show_peer (struct vty *vty, struct peer *p)
 	  || p->afc_recv[AFI_IP6][SAFI_UNICAST]
 	  || p->afc_adv[AFI_IP6][SAFI_MULTICAST]
 	  || p->afc_recv[AFI_IP6][SAFI_MULTICAST]
+	  || p->afc_adv[AFI_IP6][SAFI_MPLS_VPN]
+	  || p->afc_recv[AFI_IP6][SAFI_MPLS_VPN]
+	  || p->afc_adv[AFI_IP6][SAFI_ENCAP]
+	  || p->afc_recv[AFI_IP6][SAFI_ENCAP]
 #endif /* HAVE_IPV6 */
+	  || p->afc_adv[AFI_IP][SAFI_ENCAP]
+	  || p->afc_recv[AFI_IP][SAFI_ENCAP]
 	  || p->afc_adv[AFI_IP][SAFI_MPLS_VPN]
 	  || p->afc_recv[AFI_IP][SAFI_MPLS_VPN])
 	{
@@ -8014,69 +8483,24 @@ bgp_show_neighbor_vty (struct vty *vty, const char *name,
 }
 
 /* "show ip bgp neighbors" commands.  */
-DEFUN (show_ip_bgp_neighbors,
-       show_ip_bgp_neighbors_cmd,
-       "show ip bgp neighbors",
+DEFUN (show_bgp_neighbors,
+       show_bgp_neighbors_cmd,
+       "show bgp neighbors",
        SHOW_STR
-       IP_STR
        BGP_STR
        "Detailed information on TCP and BGP neighbor connections\n")
 {
   return bgp_show_neighbor_vty (vty, NULL, show_all, NULL);
 }
 
-ALIAS (show_ip_bgp_neighbors,
-       show_ip_bgp_ipv4_neighbors_cmd,
-       "show ip bgp ipv4 (unicast|multicast) neighbors",
+DEFUN (show_bgp_neighbors_peer,
+       show_bgp_neighbors_peer_cmd,
+#ifdef HAVE_IPV6
+       "show bgp neighbors (A.B.C.D|X:X::X:X)",
+#else
+       "show bgp neighbors (A.B.C.D)",
+#endif /* HAVE_IPV6 */
        SHOW_STR
-       IP_STR
-       BGP_STR
-       "Address family\n"
-       "Address Family modifier\n"
-       "Address Family modifier\n"
-       "Detailed information on TCP and BGP neighbor connections\n")
-
-ALIAS (show_ip_bgp_neighbors,
-       show_ip_bgp_vpnv4_all_neighbors_cmd,
-       "show ip bgp vpnv4 all neighbors",
-       SHOW_STR
-       IP_STR
-       BGP_STR
-       "Display VPNv4 NLRI specific information\n"
-       "Display information about all VPNv4 NLRIs\n"
-       "Detailed information on TCP and BGP neighbor connections\n")
-
-ALIAS (show_ip_bgp_neighbors,
-       show_ip_bgp_vpnv4_rd_neighbors_cmd,
-       "show ip bgp vpnv4 rd ASN:nn_or_IP-address:nn neighbors",
-       SHOW_STR
-       IP_STR
-       BGP_STR
-       "Display VPNv4 NLRI specific information\n"
-       "Display information for a route distinguisher\n"
-       "VPN Route Distinguisher\n"
-       "Detailed information on TCP and BGP neighbor connections\n")
-
-ALIAS (show_ip_bgp_neighbors,
-       show_bgp_neighbors_cmd,
-       "show bgp neighbors",
-       SHOW_STR
-       BGP_STR
-       "Detailed information on TCP and BGP neighbor connections\n")
-
-ALIAS (show_ip_bgp_neighbors,
-       show_bgp_ipv6_neighbors_cmd,
-       "show bgp ipv6 neighbors",
-       SHOW_STR
-       BGP_STR
-       "Address family\n"
-       "Detailed information on TCP and BGP neighbor connections\n")
-
-DEFUN (show_ip_bgp_neighbors_peer,
-       show_ip_bgp_neighbors_peer_cmd,
-       "show ip bgp neighbors (A.B.C.D|X:X::X:X)",
-       SHOW_STR
-       IP_STR
        BGP_STR
        "Detailed information on TCP and BGP neighbor connections\n"
        "Neighbor to display information about\n"
@@ -8085,65 +8509,10 @@ DEFUN (show_ip_bgp_neighbors_peer,
   return bgp_show_neighbor_vty (vty, NULL, show_peer, argv[argc - 1]);
 }
 
-ALIAS (show_ip_bgp_neighbors_peer,
-       show_ip_bgp_ipv4_neighbors_peer_cmd,
-       "show ip bgp ipv4 (unicast|multicast) neighbors (A.B.C.D|X:X::X:X)",
+DEFUN (show_bgp_instance_neighbors,
+       show_bgp_instance_neighbors_cmd,
+       "show bgp view WORD neighbors",
        SHOW_STR
-       IP_STR
-       BGP_STR
-       "Address family\n"
-       "Address Family modifier\n"
-       "Address Family modifier\n"
-       "Detailed information on TCP and BGP neighbor connections\n"
-       "Neighbor to display information about\n"
-       "Neighbor to display information about\n")
-
-ALIAS (show_ip_bgp_neighbors_peer,
-       show_ip_bgp_vpnv4_all_neighbors_peer_cmd,
-       "show ip bgp vpnv4 all neighbors A.B.C.D",
-       SHOW_STR
-       IP_STR
-       BGP_STR
-       "Display VPNv4 NLRI specific information\n"
-       "Display information about all VPNv4 NLRIs\n"
-       "Detailed information on TCP and BGP neighbor connections\n"
-       "Neighbor to display information about\n")
-
-ALIAS (show_ip_bgp_neighbors_peer,
-       show_ip_bgp_vpnv4_rd_neighbors_peer_cmd,
-       "show ip bgp vpnv4 rd ASN:nn_or_IP-address:nn neighbors A.B.C.D",
-       SHOW_STR
-       IP_STR
-       BGP_STR
-       "Display VPNv4 NLRI specific information\n"
-       "Display information about all VPNv4 NLRIs\n"
-       "Detailed information on TCP and BGP neighbor connections\n"
-       "Neighbor to display information about\n")
-
-ALIAS (show_ip_bgp_neighbors_peer,
-       show_bgp_neighbors_peer_cmd,
-       "show bgp neighbors (A.B.C.D|X:X::X:X)",
-       SHOW_STR
-       BGP_STR
-       "Detailed information on TCP and BGP neighbor connections\n"
-       "Neighbor to display information about\n"
-       "Neighbor to display information about\n")
-
-ALIAS (show_ip_bgp_neighbors_peer,
-       show_bgp_ipv6_neighbors_peer_cmd,
-       "show bgp ipv6 neighbors (A.B.C.D|X:X::X:X)",
-       SHOW_STR
-       BGP_STR
-       "Address family\n"
-       "Detailed information on TCP and BGP neighbor connections\n"
-       "Neighbor to display information about\n"
-       "Neighbor to display information about\n")
-
-DEFUN (show_ip_bgp_instance_neighbors,
-       show_ip_bgp_instance_neighbors_cmd,
-       "show ip bgp view WORD neighbors",
-       SHOW_STR
-       IP_STR
        BGP_STR
        "BGP view\n"
        "View name\n"
@@ -8152,16 +8521,7 @@ DEFUN (show_ip_bgp_instance_neighbors,
   return bgp_show_neighbor_vty (vty, argv[0], show_all, NULL);
 }
 
-ALIAS (show_ip_bgp_instance_neighbors,
-       show_bgp_instance_neighbors_cmd,
-       "show bgp view WORD neighbors",
-       SHOW_STR
-       BGP_STR
-       "BGP view\n"
-       "View name\n"
-       "Detailed information on TCP and BGP neighbor connections\n")
-
-ALIAS (show_ip_bgp_instance_neighbors,
+ALIAS (show_bgp_instance_neighbors,
        show_bgp_instance_ipv6_neighbors_cmd,
        "show bgp view WORD ipv6 neighbors",
        SHOW_STR
@@ -8171,11 +8531,14 @@ ALIAS (show_ip_bgp_instance_neighbors,
        "Address family\n"
        "Detailed information on TCP and BGP neighbor connections\n")
 
-DEFUN (show_ip_bgp_instance_neighbors_peer,
-       show_ip_bgp_instance_neighbors_peer_cmd,
-       "show ip bgp view WORD neighbors (A.B.C.D|X:X::X:X)",
+DEFUN (show_bgp_instance_neighbors_peer,
+       show_bgp_instance_neighbors_peer_cmd,
+#ifdef HAVE_IPV6
+       "show bgp view WORD neighbors (A.B.C.D|X:X::X:X)",
+#else
+       "show bgp view WORD neighbors (A.B.C.D)",
+#endif
        SHOW_STR
-       IP_STR
        BGP_STR
        "BGP view\n"
        "View name\n"
@@ -8186,18 +8549,7 @@ DEFUN (show_ip_bgp_instance_neighbors_peer,
   return bgp_show_neighbor_vty (vty, argv[0], show_peer, argv[1]);
 }
 
-ALIAS (show_ip_bgp_instance_neighbors_peer,
-       show_bgp_instance_neighbors_peer_cmd,
-       "show bgp view WORD neighbors (A.B.C.D|X:X::X:X)",
-       SHOW_STR
-       BGP_STR
-       "BGP view\n"
-       "View name\n"
-       "Detailed information on TCP and BGP neighbor connections\n"
-       "Neighbor to display information about\n"
-       "Neighbor to display information about\n")
-
-ALIAS (show_ip_bgp_instance_neighbors_peer,
+ALIAS (show_bgp_instance_neighbors_peer,
        show_bgp_instance_ipv6_neighbors_peer_cmd,
        "show bgp view WORD ipv6 neighbors (A.B.C.D|X:X::X:X)",
        SHOW_STR
@@ -8212,33 +8564,15 @@ ALIAS (show_ip_bgp_instance_neighbors_peer,
 /* Show BGP's AS paths internal data.  There are both `show ip bgp
    paths' and `show ip mbgp paths'.  Those functions results are the
    same.*/
-DEFUN (show_ip_bgp_paths, 
-       show_ip_bgp_paths_cmd,
-       "show ip bgp paths",
+DEFUN (show_bgp_ipv4_paths, 
+       show_bgp_ipv4_paths_cmd,
+       "show bgp paths",
        SHOW_STR
-       IP_STR
        BGP_STR
        "Path information\n")
 {
   vty_out (vty, "Address Refcnt Path%s", VTY_NEWLINE);
   aspath_print_all_vty (vty);
-  return CMD_SUCCESS;
-}
-
-DEFUN (show_ip_bgp_ipv4_paths, 
-       show_ip_bgp_ipv4_paths_cmd,
-       "show ip bgp ipv4 (unicast|multicast) paths",
-       SHOW_STR
-       IP_STR
-       BGP_STR
-       "Address family\n"
-       "Address Family modifier\n"
-       "Address Family modifier\n"
-       "Path information\n")
-{
-  vty_out (vty, "Address Refcnt Path\r\n");
-  aspath_print_all_vty (vty);
-
   return CMD_SUCCESS;
 }
 
@@ -8344,7 +8678,7 @@ bgp_write_rsclient_summary (struct vty *vty, struct peer *rsclient,
   if (CHECK_FLAG (rsclient->flags, PEER_FLAG_SHUTDOWN))
     vty_out (vty, " Idle (Admin)");
   else if (CHECK_FLAG (rsclient->sflags, PEER_STATUS_PREFIX_OVERFLOW))
-    vty_out (vty, " Idle (PfxCt)");
+    vty_out (vty, " Idle (PfxUn)");
   else
     vty_out (vty, " %-11s", LOOKUP(bgp_status_msg, rsclient->status));
 
@@ -8425,69 +8759,6 @@ bgp_show_rsclient_summary_vty (struct vty *vty, const char *name,
 }
 
 /* 'show bgp rsclient' commands. */
-DEFUN (show_ip_bgp_rsclient_summary,
-       show_ip_bgp_rsclient_summary_cmd,
-       "show ip bgp rsclient summary",
-       SHOW_STR
-       IP_STR
-       BGP_STR
-       "Information about Route Server Clients\n"
-       "Summary of all Route Server Clients\n")
-{
-  return bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP, SAFI_UNICAST);
-}
-
-DEFUN (show_ip_bgp_instance_rsclient_summary,
-       show_ip_bgp_instance_rsclient_summary_cmd,
-       "show ip bgp view WORD rsclient summary",
-       SHOW_STR
-       IP_STR
-       BGP_STR
-       "BGP view\n"
-       "View name\n"
-       "Information about Route Server Clients\n"
-       "Summary of all Route Server Clients\n")
-{
-  return bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP, SAFI_UNICAST);
-}
-
-DEFUN (show_ip_bgp_ipv4_rsclient_summary,
-      show_ip_bgp_ipv4_rsclient_summary_cmd,
-      "show ip bgp ipv4 (unicast|multicast) rsclient summary",
-       SHOW_STR
-       IP_STR
-       BGP_STR
-       "Address family\n"
-       "Address Family modifier\n"
-       "Address Family modifier\n"
-       "Information about Route Server Clients\n"
-       "Summary of all Route Server Clients\n")
-{
-  if (strncmp (argv[0], "m", 1) == 0)
-    return bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP, SAFI_MULTICAST);
-
-  return bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP, SAFI_UNICAST);
-}
-
-DEFUN (show_ip_bgp_instance_ipv4_rsclient_summary,
-      show_ip_bgp_instance_ipv4_rsclient_summary_cmd,
-      "show ip bgp view WORD ipv4 (unicast|multicast) rsclient summary",
-       SHOW_STR
-       IP_STR
-       BGP_STR
-       "BGP view\n"
-       "View name\n"
-       "Address family\n"
-       "Address Family modifier\n"
-       "Address Family modifier\n"
-       "Information about Route Server Clients\n"
-       "Summary of all Route Server Clients\n")
-{
-  if (strncmp (argv[1], "m", 1) == 0)
-    return bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP, SAFI_MULTICAST);
-
-  return bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP, SAFI_UNICAST);
-}
 
 DEFUN (show_bgp_instance_ipv4_safi_rsclient_summary,
        show_bgp_instance_ipv4_safi_rsclient_summary_cmd,
@@ -8524,7 +8795,6 @@ ALIAS (show_bgp_instance_ipv4_safi_rsclient_summary,
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_rsclient_summary,
        show_bgp_rsclient_summary_cmd,
        "show bgp rsclient summary",
@@ -8533,7 +8803,34 @@ DEFUN (show_bgp_rsclient_summary,
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
 {
-  return bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP6, SAFI_UNICAST);
+    vty_out(vty, "%sIPv4 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP, SAFI_UNICAST);
+    vty_out(vty, "%sIPv4 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv4 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv4 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP, SAFI_ENCAP);
+
+#ifdef HAVE_IPV6
+    vty_out(vty, "%sIPv6 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP6, SAFI_UNICAST);
+    vty_out(vty, "%sIPv6 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP6, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv6 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP6, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv6 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP6, SAFI_ENCAP);
+#endif
+    return CMD_SUCCESS;
 }
 
 DEFUN (show_bgp_instance_rsclient_summary,
@@ -8546,10 +8843,38 @@ DEFUN (show_bgp_instance_rsclient_summary,
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
 {
-  return bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP6, SAFI_UNICAST);
+    vty_out(vty, "%sIPv4 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP, SAFI_UNICAST);
+    vty_out(vty, "%sIPv4 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv4 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv4 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP, SAFI_ENCAP);
+
+#ifdef HAVE_IPV6
+    vty_out(vty, "%sIPv6 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP6, SAFI_UNICAST);
+    vty_out(vty, "%sIPv6 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP6, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv6 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP6, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv6 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP6, SAFI_ENCAP);
+#endif
+    return CMD_SUCCESS;
 }
 
-ALIAS (show_bgp_rsclient_summary,
+#ifdef HAVE_IPV6
+DEFUN (show_bgp_ipv6_rsclient_summary,
       show_bgp_ipv6_rsclient_summary_cmd,
       "show bgp ipv6 rsclient summary",
        SHOW_STR
@@ -8557,8 +8882,24 @@ ALIAS (show_bgp_rsclient_summary,
        "Address family\n"
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
+{
+    vty_out(vty, "%sIPv6 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP6, SAFI_UNICAST);
+    vty_out(vty, "%sIPv6 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP6, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv6 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP6, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv6 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP6, SAFI_ENCAP);
 
-ALIAS (show_bgp_instance_rsclient_summary,
+    return CMD_SUCCESS;
+}
+
+DEFUN (show_bgp_instance_ipv6_rsclient_summary,
       show_bgp_instance_ipv6_rsclient_summary_cmd,
        "show bgp view WORD ipv6 rsclient summary",
        SHOW_STR
@@ -8568,6 +8909,22 @@ ALIAS (show_bgp_instance_rsclient_summary,
        "Address family\n"
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
+{
+    vty_out(vty, "%sIPv6 Unicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "---------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP6, SAFI_UNICAST);
+    vty_out(vty, "%sIPv6 Multicast Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP6, SAFI_MULTICAST);
+    vty_out(vty, "%sIPv6 VPN Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-----------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP6, SAFI_MPLS_VPN);
+    vty_out(vty, "%sIPv6 Encap Summary:%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty, "-------------------%s", VTY_NEWLINE);
+    bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP6, SAFI_ENCAP);
+
+    return CMD_SUCCESS;
+}
 
 DEFUN (show_bgp_instance_ipv6_safi_rsclient_summary,
        show_bgp_instance_ipv6_safi_rsclient_summary_cmd,
@@ -8598,7 +8955,7 @@ ALIAS (show_bgp_instance_ipv6_safi_rsclient_summary,
        "show bgp ipv6 (unicast|multicast) rsclient summary",
        SHOW_STR
        BGP_STR
-       "Address family\n"
+       IPV6_STR
        "Address Family modifier\n"
        "Address Family modifier\n"
        "Information about Route Server Clients\n"
@@ -9111,6 +9468,27 @@ static struct cmd_node bgp_vpnv4_node =
   1
 };
 
+static struct cmd_node bgp_vpnv6_node =
+{
+  BGP_VPNV6_NODE,
+  "%s(config-router-af-vpnv6)# ",
+  1
+};
+
+static struct cmd_node bgp_encap_node =
+{
+  BGP_ENCAP_NODE,
+  "%s(config-router-af-encap)# ",
+  1
+};
+
+static struct cmd_node bgp_encapv6_node =
+{
+  BGP_ENCAPV6_NODE,
+  "%s(config-router-af-encapv6)# ",
+  1
+};
+
 static void community_list_vty (void);
 
 void
@@ -9123,6 +9501,9 @@ bgp_vty_init (void)
   install_node (&bgp_ipv6_unicast_node, NULL);
   install_node (&bgp_ipv6_multicast_node, NULL);
   install_node (&bgp_vpnv4_node, NULL);
+  install_node (&bgp_vpnv6_node, NULL);
+  install_node (&bgp_encap_node, NULL);
+  install_node (&bgp_encapv6_node, NULL);
 
   /* Install default VTY commands to new nodes.  */
   install_default (BGP_NODE);
@@ -9131,6 +9512,9 @@ bgp_vty_init (void)
   install_default (BGP_IPV6_NODE);
   install_default (BGP_IPV6M_NODE);
   install_default (BGP_VPNV4_NODE);
+  install_default (BGP_VPNV6_NODE);
+  install_default (BGP_ENCAP_NODE);
+  install_default (BGP_ENCAPV6_NODE);
   
   /* "bgp multiple-instance" commands. */
   install_element (CONFIG_NODE, &bgp_multiple_instance_cmd);
@@ -9289,6 +9673,9 @@ bgp_vty_init (void)
   install_element (BGP_IPV6_NODE, &neighbor_activate_cmd);
   install_element (BGP_IPV6M_NODE, &neighbor_activate_cmd);
   install_element (BGP_VPNV4_NODE, &neighbor_activate_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_activate_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_activate_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_activate_cmd);
 
   /* "no neighbor activate" commands. */
   install_element (BGP_NODE, &no_neighbor_activate_cmd);
@@ -9297,6 +9684,9 @@ bgp_vty_init (void)
   install_element (BGP_IPV6_NODE, &no_neighbor_activate_cmd);
   install_element (BGP_IPV6M_NODE, &no_neighbor_activate_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_activate_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_activate_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_activate_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_activate_cmd);
 
   /* "neighbor peer-group set" commands. */
   install_element (BGP_NODE, &neighbor_set_peer_group_cmd);
@@ -9305,6 +9695,9 @@ bgp_vty_init (void)
   install_element (BGP_IPV6_NODE, &neighbor_set_peer_group_cmd);
   install_element (BGP_IPV6M_NODE, &neighbor_set_peer_group_cmd);
   install_element (BGP_VPNV4_NODE, &neighbor_set_peer_group_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_set_peer_group_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_set_peer_group_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_set_peer_group_cmd);
   
   /* "no neighbor peer-group unset" commands. */
   install_element (BGP_NODE, &no_neighbor_set_peer_group_cmd);
@@ -9313,6 +9706,9 @@ bgp_vty_init (void)
   install_element (BGP_IPV6_NODE, &no_neighbor_set_peer_group_cmd);
   install_element (BGP_IPV6M_NODE, &no_neighbor_set_peer_group_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_set_peer_group_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_set_peer_group_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_set_peer_group_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_set_peer_group_cmd);
   
   /* "neighbor softreconfiguration inbound" commands.*/
   install_element (BGP_NODE, &neighbor_soft_reconfiguration_cmd);
@@ -9327,6 +9723,12 @@ bgp_vty_init (void)
   install_element (BGP_IPV6M_NODE, &no_neighbor_soft_reconfiguration_cmd);
   install_element (BGP_VPNV4_NODE, &neighbor_soft_reconfiguration_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_soft_reconfiguration_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_soft_reconfiguration_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_soft_reconfiguration_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_soft_reconfiguration_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_soft_reconfiguration_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_soft_reconfiguration_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_soft_reconfiguration_cmd);
 
   /* "neighbor attribute-unchanged" commands.  */
   install_element (BGP_NODE, &neighbor_attr_unchanged_cmd);
@@ -9462,6 +9864,75 @@ bgp_vty_init (void)
   install_element (BGP_VPNV4_NODE, &no_neighbor_attr_unchanged9_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_attr_unchanged10_cmd);
 
+  install_element (BGP_VPNV6_NODE, &neighbor_attr_unchanged_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_attr_unchanged1_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_attr_unchanged2_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_attr_unchanged3_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_attr_unchanged4_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_attr_unchanged5_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_attr_unchanged6_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_attr_unchanged7_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_attr_unchanged8_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_attr_unchanged9_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_attr_unchanged10_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_attr_unchanged_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_attr_unchanged1_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_attr_unchanged2_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_attr_unchanged3_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_attr_unchanged4_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_attr_unchanged5_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_attr_unchanged6_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_attr_unchanged7_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_attr_unchanged8_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_attr_unchanged9_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_attr_unchanged10_cmd);
+
+  install_element (BGP_ENCAP_NODE, &neighbor_attr_unchanged_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_attr_unchanged1_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_attr_unchanged2_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_attr_unchanged3_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_attr_unchanged4_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_attr_unchanged5_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_attr_unchanged6_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_attr_unchanged7_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_attr_unchanged8_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_attr_unchanged9_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_attr_unchanged10_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_attr_unchanged_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_attr_unchanged1_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_attr_unchanged2_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_attr_unchanged3_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_attr_unchanged4_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_attr_unchanged5_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_attr_unchanged6_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_attr_unchanged7_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_attr_unchanged8_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_attr_unchanged9_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_attr_unchanged10_cmd);
+
+  install_element (BGP_ENCAPV6_NODE, &neighbor_attr_unchanged_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_attr_unchanged1_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_attr_unchanged2_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_attr_unchanged3_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_attr_unchanged4_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_attr_unchanged5_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_attr_unchanged6_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_attr_unchanged7_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_attr_unchanged8_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_attr_unchanged9_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_attr_unchanged10_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_attr_unchanged_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_attr_unchanged1_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_attr_unchanged2_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_attr_unchanged3_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_attr_unchanged4_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_attr_unchanged5_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_attr_unchanged6_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_attr_unchanged7_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_attr_unchanged8_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_attr_unchanged9_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_attr_unchanged10_cmd);
+
   /* "nexthop-local unchanged" commands */
   install_element (BGP_IPV6_NODE, &neighbor_nexthop_local_unchanged_cmd);
   install_element (BGP_IPV6_NODE, &no_neighbor_nexthop_local_unchanged_cmd);
@@ -9484,6 +9955,12 @@ bgp_vty_init (void)
   install_element (BGP_IPV6M_NODE, &no_neighbor_nexthop_self_cmd);
   install_element (BGP_VPNV4_NODE, &neighbor_nexthop_self_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_nexthop_self_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_nexthop_self_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_nexthop_self_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_nexthop_self_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_nexthop_self_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_nexthop_self_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_nexthop_self_cmd);
 
   /* "neighbor remove-private-AS" commands. */
   install_element (BGP_NODE, &neighbor_remove_private_as_cmd);
@@ -9498,6 +9975,12 @@ bgp_vty_init (void)
   install_element (BGP_IPV6M_NODE, &no_neighbor_remove_private_as_cmd);
   install_element (BGP_VPNV4_NODE, &neighbor_remove_private_as_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_remove_private_as_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_remove_private_as_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_remove_private_as_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_remove_private_as_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_remove_private_as_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_remove_private_as_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_remove_private_as_cmd);
 
   /* "neighbor send-community" commands.*/
   install_element (BGP_NODE, &neighbor_send_community_cmd);
@@ -9524,6 +10007,18 @@ bgp_vty_init (void)
   install_element (BGP_VPNV4_NODE, &neighbor_send_community_type_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_send_community_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_send_community_type_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_send_community_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_send_community_type_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_send_community_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_send_community_type_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_send_community_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_send_community_type_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_send_community_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_send_community_type_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_send_community_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_send_community_type_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_send_community_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_send_community_type_cmd);
 
   /* "neighbor route-reflector" commands.*/
   install_element (BGP_NODE, &neighbor_route_reflector_client_cmd);
@@ -9538,6 +10033,12 @@ bgp_vty_init (void)
   install_element (BGP_IPV6M_NODE, &no_neighbor_route_reflector_client_cmd);
   install_element (BGP_VPNV4_NODE, &neighbor_route_reflector_client_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_route_reflector_client_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_route_reflector_client_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_route_reflector_client_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_route_reflector_client_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_route_reflector_client_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_route_reflector_client_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_route_reflector_client_cmd);
 
   /* "neighbor route-server" commands.*/
   install_element (BGP_NODE, &neighbor_route_server_client_cmd);
@@ -9552,6 +10053,12 @@ bgp_vty_init (void)
   install_element (BGP_IPV6M_NODE, &no_neighbor_route_server_client_cmd);
   install_element (BGP_VPNV4_NODE, &neighbor_route_server_client_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_route_server_client_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_route_server_client_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_route_server_client_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_route_server_client_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_route_server_client_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_route_server_client_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_route_server_client_cmd);
 
   /* "neighbor passive" commands. */
   install_element (BGP_NODE, &neighbor_passive_cmd);
@@ -9680,6 +10187,12 @@ bgp_vty_init (void)
   install_element (BGP_IPV6M_NODE, &no_neighbor_distribute_list_cmd);
   install_element (BGP_VPNV4_NODE, &neighbor_distribute_list_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_distribute_list_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_distribute_list_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_distribute_list_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_distribute_list_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_distribute_list_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_distribute_list_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_distribute_list_cmd);
 
   /* "neighbor prefix-list" commands. */
   install_element (BGP_NODE, &neighbor_prefix_list_cmd);
@@ -9694,6 +10207,12 @@ bgp_vty_init (void)
   install_element (BGP_IPV6M_NODE, &no_neighbor_prefix_list_cmd);
   install_element (BGP_VPNV4_NODE, &neighbor_prefix_list_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_prefix_list_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_prefix_list_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_prefix_list_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_prefix_list_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_prefix_list_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_prefix_list_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_prefix_list_cmd);
 
   /* "neighbor filter-list" commands. */
   install_element (BGP_NODE, &neighbor_filter_list_cmd);
@@ -9708,6 +10227,12 @@ bgp_vty_init (void)
   install_element (BGP_IPV6M_NODE, &no_neighbor_filter_list_cmd);
   install_element (BGP_VPNV4_NODE, &neighbor_filter_list_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_filter_list_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_filter_list_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_filter_list_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_filter_list_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_filter_list_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_filter_list_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_filter_list_cmd);
 
   /* "neighbor route-map" commands. */
   install_element (BGP_NODE, &neighbor_route_map_cmd);
@@ -9722,6 +10247,12 @@ bgp_vty_init (void)
   install_element (BGP_IPV6M_NODE, &no_neighbor_route_map_cmd);
   install_element (BGP_VPNV4_NODE, &neighbor_route_map_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_route_map_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_route_map_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_route_map_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_route_map_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_route_map_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_route_map_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_route_map_cmd);
 
   /* "neighbor unsuppress-map" commands. */
   install_element (BGP_NODE, &neighbor_unsuppress_map_cmd);
@@ -9736,6 +10267,12 @@ bgp_vty_init (void)
   install_element (BGP_IPV6M_NODE, &no_neighbor_unsuppress_map_cmd);
   install_element (BGP_VPNV4_NODE, &neighbor_unsuppress_map_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_unsuppress_map_cmd);  
+  install_element (BGP_VPNV6_NODE, &neighbor_unsuppress_map_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_unsuppress_map_cmd);  
+  install_element (BGP_ENCAP_NODE, &neighbor_unsuppress_map_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_unsuppress_map_cmd);  
+  install_element (BGP_ENCAPV6_NODE, &neighbor_unsuppress_map_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_unsuppress_map_cmd);  
 
   /* "neighbor maximum-prefix" commands. */
   install_element (BGP_NODE, &neighbor_maximum_prefix_cmd);
@@ -9817,6 +10354,48 @@ bgp_vty_init (void)
   install_element (BGP_VPNV4_NODE, &no_neighbor_maximum_prefix_restart_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_maximum_prefix_threshold_restart_cmd);
 
+  install_element (BGP_VPNV6_NODE, &neighbor_maximum_prefix_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_maximum_prefix_threshold_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_maximum_prefix_warning_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_maximum_prefix_threshold_warning_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_maximum_prefix_restart_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_maximum_prefix_threshold_restart_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_maximum_prefix_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_maximum_prefix_val_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_maximum_prefix_threshold_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_maximum_prefix_warning_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_maximum_prefix_threshold_warning_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_maximum_prefix_restart_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_maximum_prefix_threshold_restart_cmd);
+
+  install_element (BGP_ENCAP_NODE, &neighbor_maximum_prefix_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_maximum_prefix_threshold_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_maximum_prefix_warning_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_maximum_prefix_threshold_warning_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_maximum_prefix_restart_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_maximum_prefix_threshold_restart_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_maximum_prefix_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_maximum_prefix_val_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_maximum_prefix_threshold_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_maximum_prefix_warning_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_maximum_prefix_threshold_warning_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_maximum_prefix_restart_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_maximum_prefix_threshold_restart_cmd);
+
+  install_element (BGP_ENCAPV6_NODE, &neighbor_maximum_prefix_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_maximum_prefix_threshold_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_maximum_prefix_warning_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_maximum_prefix_threshold_warning_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_maximum_prefix_restart_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_maximum_prefix_threshold_restart_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_maximum_prefix_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_maximum_prefix_val_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_maximum_prefix_threshold_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_maximum_prefix_warning_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_maximum_prefix_threshold_warning_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_maximum_prefix_restart_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_maximum_prefix_threshold_restart_cmd);
+
   /* "neighbor allowas-in" */
   install_element (BGP_NODE, &neighbor_allowas_in_cmd);
   install_element (BGP_NODE, &neighbor_allowas_in_arg_cmd);
@@ -9836,6 +10415,15 @@ bgp_vty_init (void)
   install_element (BGP_VPNV4_NODE, &neighbor_allowas_in_cmd);
   install_element (BGP_VPNV4_NODE, &neighbor_allowas_in_arg_cmd);
   install_element (BGP_VPNV4_NODE, &no_neighbor_allowas_in_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_allowas_in_cmd);
+  install_element (BGP_VPNV6_NODE, &neighbor_allowas_in_arg_cmd);
+  install_element (BGP_VPNV6_NODE, &no_neighbor_allowas_in_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_allowas_in_cmd);
+  install_element (BGP_ENCAP_NODE, &neighbor_allowas_in_arg_cmd);
+  install_element (BGP_ENCAP_NODE, &no_neighbor_allowas_in_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_allowas_in_cmd);
+  install_element (BGP_ENCAPV6_NODE, &neighbor_allowas_in_arg_cmd);
+  install_element (BGP_ENCAPV6_NODE, &no_neighbor_allowas_in_cmd);
 
   /* address-family commands. */
   install_element (BGP_NODE, &address_family_ipv4_cmd);
@@ -9847,12 +10435,26 @@ bgp_vty_init (void)
   install_element (BGP_NODE, &address_family_vpnv4_cmd);
   install_element (BGP_NODE, &address_family_vpnv4_unicast_cmd);
 
+#ifdef HAVE_IPV6
+  install_element (BGP_NODE, &address_family_vpnv6_cmd);
+  install_element (BGP_NODE, &address_family_vpnv6_unicast_cmd);
+#endif
+
+  install_element (BGP_NODE, &address_family_encap_cmd);
+  install_element (BGP_NODE, &address_family_encapv4_cmd);
+#ifdef HAVE_IPV6
+  install_element (BGP_NODE, &address_family_encapv6_cmd);
+#endif
+
   /* "exit-address-family" command. */
   install_element (BGP_IPV4_NODE, &exit_address_family_cmd);
   install_element (BGP_IPV4M_NODE, &exit_address_family_cmd);
   install_element (BGP_IPV6_NODE, &exit_address_family_cmd);
   install_element (BGP_IPV6M_NODE, &exit_address_family_cmd);
   install_element (BGP_VPNV4_NODE, &exit_address_family_cmd);
+  install_element (BGP_VPNV6_NODE, &exit_address_family_cmd);
+  install_element (BGP_ENCAP_NODE, &exit_address_family_cmd);
+  install_element (BGP_ENCAPV6_NODE, &exit_address_family_cmd);
 
   /* "clear ip bgp commands" */
   install_element (ENABLE_NODE, &clear_ip_bgp_all_cmd);
@@ -9865,12 +10467,16 @@ bgp_vty_init (void)
   install_element (ENABLE_NODE, &clear_bgp_all_cmd);
   install_element (ENABLE_NODE, &clear_bgp_instance_all_cmd);
   install_element (ENABLE_NODE, &clear_bgp_ipv6_all_cmd);
+
   install_element (ENABLE_NODE, &clear_bgp_peer_cmd);
   install_element (ENABLE_NODE, &clear_bgp_ipv6_peer_cmd);
+
   install_element (ENABLE_NODE, &clear_bgp_peer_group_cmd);
   install_element (ENABLE_NODE, &clear_bgp_ipv6_peer_group_cmd);
+
   install_element (ENABLE_NODE, &clear_bgp_external_cmd);
   install_element (ENABLE_NODE, &clear_bgp_ipv6_external_cmd);
+
   install_element (ENABLE_NODE, &clear_bgp_as_cmd);
   install_element (ENABLE_NODE, &clear_bgp_ipv6_as_cmd);
 #endif /* HAVE_IPV6 */
@@ -9916,6 +10522,12 @@ bgp_vty_init (void)
   install_element (ENABLE_NODE, &clear_ip_bgp_peer_vpnv4_in_cmd);
   install_element (ENABLE_NODE, &clear_ip_bgp_as_vpnv4_soft_in_cmd);
   install_element (ENABLE_NODE, &clear_ip_bgp_as_vpnv4_in_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_all_encap_soft_in_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_all_encap_in_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_peer_encap_soft_in_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_peer_encap_in_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_as_encap_soft_in_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_as_encap_in_cmd);
 #ifdef HAVE_IPV6
   install_element (ENABLE_NODE, &clear_bgp_all_soft_in_cmd);
   install_element (ENABLE_NODE, &clear_bgp_instance_all_soft_in_cmd);
@@ -9979,6 +10591,12 @@ bgp_vty_init (void)
   install_element (ENABLE_NODE, &clear_ip_bgp_peer_vpnv4_out_cmd);
   install_element (ENABLE_NODE, &clear_ip_bgp_as_vpnv4_soft_out_cmd);
   install_element (ENABLE_NODE, &clear_ip_bgp_as_vpnv4_out_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_all_encap_soft_out_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_all_encap_out_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_peer_encap_soft_out_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_peer_encap_out_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_as_encap_soft_out_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_as_encap_out_cmd);
 #ifdef HAVE_IPV6
   install_element (ENABLE_NODE, &clear_bgp_all_soft_out_cmd);
   install_element (ENABLE_NODE, &clear_bgp_instance_all_soft_out_cmd);
@@ -10019,6 +10637,9 @@ bgp_vty_init (void)
   install_element (ENABLE_NODE, &clear_ip_bgp_all_vpnv4_soft_cmd);
   install_element (ENABLE_NODE, &clear_ip_bgp_peer_vpnv4_soft_cmd);
   install_element (ENABLE_NODE, &clear_ip_bgp_as_vpnv4_soft_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_all_encap_soft_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_peer_encap_soft_cmd);
+  install_element (ENABLE_NODE, &clear_ip_bgp_as_encap_soft_cmd);
 #ifdef HAVE_IPV6
   install_element (ENABLE_NODE, &clear_bgp_all_soft_cmd);
   install_element (ENABLE_NODE, &clear_bgp_instance_all_soft_cmd);
@@ -10050,157 +10671,122 @@ bgp_vty_init (void)
 #endif /* HAVE_IPV6 */
 
   /* "show ip bgp summary" commands. */
-  install_element (VIEW_NODE, &show_ip_bgp_summary_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_instance_summary_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_ipv4_summary_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv4_safi_summary_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_instance_ipv4_summary_cmd);
-  install_element (VIEW_NODE, &show_bgp_instance_ipv4_safi_summary_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_vpnv4_all_summary_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_vpnv4_rd_summary_cmd);
-#ifdef HAVE_IPV6
   install_element (VIEW_NODE, &show_bgp_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_summary_cmd);
+
+  install_element (VIEW_NODE, &show_bgp_summary_1w_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_summary_1w_cmd);
+  install_element (ENABLE_NODE, &show_bgp_summary_1w_cmd);
+
+  install_element (VIEW_NODE, &show_bgp_ipv4_safi_summary_cmd);
+  install_element (VIEW_NODE, &show_bgp_instance_ipv4_safi_summary_cmd);
+  install_element (VIEW_NODE, &show_bgp_instance_ipv4_summary_cmd);
+
+  install_element (VIEW_NODE, &show_bgp_ipv4_vpn_summary_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_encap_summary_cmd);
+#ifdef HAVE_IPV6
+  install_element (VIEW_NODE, &show_bgp_ipv6_vpn_summary_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_encap_summary_cmd);
+#endif
+
   install_element (VIEW_NODE, &show_bgp_instance_summary_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_summary_cmd);
+#ifdef HAVE_IPV6
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_instance_ipv6_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_instance_ipv6_safi_summary_cmd);
 #endif /* HAVE_IPV6 */
-  install_element (RESTRICTED_NODE, &show_ip_bgp_summary_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_instance_summary_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_ipv4_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_ipv4_safi_summary_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_instance_ipv4_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_instance_ipv4_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_instance_ipv4_safi_summary_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_vpnv4_all_summary_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_vpnv4_rd_summary_cmd);
+
+  install_element (RESTRICTED_NODE, &show_bgp_ipv4_vpn_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv4_encap_summary_cmd);
 #ifdef HAVE_IPV6
-  install_element (RESTRICTED_NODE, &show_bgp_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_vpn_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_encap_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_encap_summary_cmd);
+#endif
+
   install_element (RESTRICTED_NODE, &show_bgp_instance_summary_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_ipv6_summary_cmd);
+#ifdef HAVE_IPV6
   install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_instance_ipv6_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_instance_ipv6_safi_summary_cmd);
 #endif /* HAVE_IPV6 */
-  install_element (ENABLE_NODE, &show_ip_bgp_summary_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_instance_summary_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_ipv4_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_summary_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_instance_ipv4_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_instance_ipv4_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_instance_ipv4_safi_summary_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_vpnv4_all_summary_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_vpnv4_rd_summary_cmd);
+
+  install_element (ENABLE_NODE, &show_bgp_ipv4_vpn_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_encap_summary_cmd);
 #ifdef HAVE_IPV6
-  install_element (ENABLE_NODE, &show_bgp_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_vpn_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_encap_summary_cmd);
+#endif
+
   install_element (ENABLE_NODE, &show_bgp_instance_summary_cmd);
-  install_element (ENABLE_NODE, &show_bgp_ipv6_summary_cmd);
+#ifdef HAVE_IPV6
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_instance_ipv6_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_instance_ipv6_safi_summary_cmd);
 #endif /* HAVE_IPV6 */
 
   /* "show ip bgp neighbors" commands. */
-  install_element (VIEW_NODE, &show_ip_bgp_neighbors_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_ipv4_neighbors_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_neighbors_peer_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_ipv4_neighbors_peer_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_vpnv4_all_neighbors_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_vpnv4_rd_neighbors_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_vpnv4_all_neighbors_peer_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_vpnv4_rd_neighbors_peer_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_instance_neighbors_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_instance_neighbors_peer_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_neighbors_peer_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_ipv4_neighbors_peer_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_vpnv4_all_neighbors_peer_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_vpnv4_rd_neighbors_peer_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_instance_neighbors_peer_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_neighbors_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_ipv4_neighbors_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_neighbors_peer_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_ipv4_neighbors_peer_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_vpnv4_all_neighbors_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_vpnv4_rd_neighbors_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_vpnv4_all_neighbors_peer_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_vpnv4_rd_neighbors_peer_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_instance_neighbors_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_instance_neighbors_peer_cmd);
-
-#ifdef HAVE_IPV6
-  install_element (VIEW_NODE, &show_bgp_neighbors_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_neighbors_cmd);
-  install_element (VIEW_NODE, &show_bgp_neighbors_peer_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_neighbors_peer_cmd);
   install_element (VIEW_NODE, &show_bgp_instance_neighbors_cmd);
-  install_element (VIEW_NODE, &show_bgp_instance_ipv6_neighbors_cmd);
-  install_element (VIEW_NODE, &show_bgp_instance_neighbors_peer_cmd);
-  install_element (VIEW_NODE, &show_bgp_instance_ipv6_neighbors_peer_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_neighbors_peer_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_ipv6_neighbors_peer_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_instance_neighbors_peer_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_instance_ipv6_neighbors_peer_cmd);
-  install_element (ENABLE_NODE, &show_bgp_neighbors_cmd);
-  install_element (ENABLE_NODE, &show_bgp_ipv6_neighbors_cmd);
-  install_element (ENABLE_NODE, &show_bgp_neighbors_peer_cmd);
-  install_element (ENABLE_NODE, &show_bgp_ipv6_neighbors_peer_cmd);
   install_element (ENABLE_NODE, &show_bgp_instance_neighbors_cmd);
-  install_element (ENABLE_NODE, &show_bgp_instance_ipv6_neighbors_cmd);
+
+  install_element (VIEW_NODE, &show_bgp_neighbors_cmd);
+  install_element (VIEW_NODE, &show_bgp_neighbors_peer_cmd);
+  install_element (VIEW_NODE, &show_bgp_instance_neighbors_peer_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_neighbors_peer_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_instance_neighbors_peer_cmd);
+  install_element (ENABLE_NODE, &show_bgp_neighbors_cmd);
+  install_element (ENABLE_NODE, &show_bgp_neighbors_peer_cmd);
   install_element (ENABLE_NODE, &show_bgp_instance_neighbors_peer_cmd);
+#ifdef HAVE_IPV6
+  install_element (VIEW_NODE, &show_bgp_instance_ipv6_neighbors_cmd);
+  install_element (VIEW_NODE, &show_bgp_instance_ipv6_neighbors_peer_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_instance_ipv6_neighbors_peer_cmd);
+  install_element (ENABLE_NODE, &show_bgp_instance_ipv6_neighbors_cmd);
   install_element (ENABLE_NODE, &show_bgp_instance_ipv6_neighbors_peer_cmd);
 
-  /* Old commands.  */
-  install_element (VIEW_NODE, &show_ipv6_bgp_summary_cmd);
-  install_element (VIEW_NODE, &show_ipv6_mbgp_summary_cmd);
-  install_element (ENABLE_NODE, &show_ipv6_bgp_summary_cmd);
-  install_element (ENABLE_NODE, &show_ipv6_mbgp_summary_cmd);
 #endif /* HAVE_IPV6 */
 
   /* "show ip bgp rsclient" commands. */
-  install_element (VIEW_NODE, &show_ip_bgp_rsclient_summary_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_instance_rsclient_summary_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_ipv4_rsclient_summary_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_instance_ipv4_rsclient_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_instance_ipv4_safi_rsclient_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_safi_rsclient_summary_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_rsclient_summary_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_instance_rsclient_summary_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_ipv4_rsclient_summary_cmd);
-  install_element (RESTRICTED_NODE, &show_ip_bgp_instance_ipv4_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_instance_ipv4_safi_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_ipv4_safi_rsclient_summary_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_rsclient_summary_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_instance_rsclient_summary_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_ipv4_rsclient_summary_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_instance_ipv4_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_instance_ipv4_safi_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_rsclient_summary_cmd);
 
-#ifdef HAVE_IPV6
   install_element (VIEW_NODE, &show_bgp_rsclient_summary_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_rsclient_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_instance_rsclient_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_rsclient_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_instance_rsclient_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_rsclient_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_instance_rsclient_summary_cmd);
+#ifdef HAVE_IPV6
+  install_element (VIEW_NODE, &show_bgp_ipv6_rsclient_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_instance_ipv6_rsclient_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_instance_ipv6_safi_rsclient_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_ipv6_rsclient_summary_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_instance_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_instance_ipv6_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_instance_ipv6_safi_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_rsclient_summary_cmd);
-  install_element (ENABLE_NODE, &show_bgp_instance_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_instance_ipv6_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_instance_ipv6_safi_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_rsclient_summary_cmd);
 #endif /* HAVE_IPV6 */
 
   /* "show ip bgp paths" commands. */
-  install_element (VIEW_NODE, &show_ip_bgp_paths_cmd);
-  install_element (VIEW_NODE, &show_ip_bgp_ipv4_paths_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_paths_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_ipv4_paths_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_paths_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_paths_cmd);
 
   /* "show ip bgp community" commands. */
   install_element (VIEW_NODE, &show_ip_bgp_community_info_cmd);

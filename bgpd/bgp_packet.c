@@ -46,6 +46,7 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #include "bgpd/bgp_ecommunity.h"
 #include "bgpd/bgp_network.h"
 #include "bgpd/bgp_mplsvpn.h"
+#include "bgpd/bgp_encap.h"
 #include "bgpd/bgp_advertise.h"
 #include "bgpd/bgp_vty.h"
 
@@ -171,16 +172,24 @@ bgp_update_packet (struct peer *peer, afi_t afi, safi_t safi)
 
       /* When remaining space can't include NLRI and it's length.  */
       if (STREAM_CONCAT_REMAIN (s, snlri, STREAM_SIZE(s)) <=
-	  (BGP_NLRI_LENGTH + PSIZE (rn->p.prefixlen)))
+	  (BGP_NLRI_LENGTH + bgp_packet_mpattr_prefix_size(afi,safi,&rn->p)))
 	break;
 
       /* If packet is empty, set attribute. */
       if (stream_empty (s))
 	{
+	  struct prefix_rd *prd = NULL;
+	  u_char *tag = NULL;
 	  struct peer *from = NULL;
 
+	  if (rn->prn)
+	    prd = (struct prefix_rd *) &rn->prn->p;
           if (binfo)
-	    from = binfo->peer;
+            {
+              from = binfo->peer;
+              if (binfo->extra)
+                tag = binfo->extra->tag;
+            }
 
 	  /* 1: Write the BGP message header - 16 bytes marker, 2 bytes length,
 	   * one byte message type.
@@ -203,8 +212,8 @@ bgp_update_packet (struct peer *peer, afi_t afi, safi_t safi)
 	  /* 5: Encode all the attributes, except MP_REACH_NLRI attr. */
 	  total_attr_len = bgp_packet_attribute (NULL, peer, s,
 	                                         adv->baa->attr,
-	                                         NULL, afi, safi,
-	                                         from, NULL, NULL);
+	                                         &rn->p, afi, safi,
+	                                         from, prd, tag);
 	}
 
       if (afi == AFI_IP && safi == SAFI_UNICAST)
@@ -1646,7 +1655,7 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
   /* Unfeasible Route packet format check. */
   if (withdraw_len > 0)
     {
-      ret = bgp_nlri_sanity_check (peer, AFI_IP, stream_pnt (s), withdraw_len);
+      ret = bgp_nlri_sanity_check (peer, AFI_IP, SAFI_UNICAST, stream_pnt (s), withdraw_len);
       if (ret < 0)
 	return -1;
 
@@ -1706,6 +1715,7 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
       if (attr_parse_ret == BGP_ATTR_PARSE_ERROR)
 	{
 	  bgp_attr_unintern_sub (&attr);
+          bgp_attr_flush (&attr);
 	  return -1;
 	}
     }
@@ -1737,10 +1747,11 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
   if (update_len)
     {
       /* Check NLRI packet format and prefix length. */
-      ret = bgp_nlri_sanity_check (peer, AFI_IP, stream_pnt (s), update_len);
+      ret = bgp_nlri_sanity_check (peer, AFI_IP, SAFI_UNICAST, stream_pnt (s), update_len);
       if (ret < 0)
         {
           bgp_attr_unintern_sub (&attr);
+          bgp_attr_flush (&attr);
 	  return -1;
 	}
 
@@ -1879,12 +1890,12 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
       if (mp_update.length 
 	  && mp_update.afi == AFI_IP 
 	  && mp_update.safi == SAFI_MPLS_LABELED_VPN)
-	bgp_nlri_parse_vpnv4 (peer, NLRI_ATTR_ARG, &mp_update);
+	bgp_nlri_parse_vpn (mp_update.afi, peer, &attr, &mp_update, 0);
 
       if (mp_withdraw.length 
 	  && mp_withdraw.afi == AFI_IP 
 	  && mp_withdraw.safi == SAFI_MPLS_LABELED_VPN)
-	bgp_nlri_parse_vpnv4 (peer, NULL, &mp_withdraw);
+	bgp_nlri_parse_vpn (mp_withdraw.afi, peer, &attr, &mp_withdraw, 1);
 
       if (! withdraw_len
 	  && mp_withdraw.afi == AFI_IP
@@ -1898,10 +1909,83 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
 		  peer->host);
 	}
     }
+  if (peer->afc[AFI_IP6][SAFI_MPLS_VPN])
+    {
+      if (mp_update.length 
+	  && mp_update.afi == AFI_IP6
+	  && mp_update.safi == BGP_SAFI_VPN)
+	bgp_nlri_parse_vpn (mp_update.afi, peer, &attr, &mp_update, 0);
+
+      if (mp_withdraw.length 
+	  && mp_withdraw.afi == AFI_IP6
+	  && mp_withdraw.safi == BGP_SAFI_VPN)
+	bgp_nlri_parse_vpn (mp_withdraw.afi, peer, &attr, &mp_withdraw, 1);
+
+      if (! withdraw_len
+	  && mp_withdraw.afi == AFI_IP6
+	  && mp_withdraw.safi == BGP_SAFI_VPN
+	  && mp_withdraw.length == 0)
+	{
+	  /* End-of-RIB received */
+
+	  if (BGP_DEBUG (update, UPDATE_IN))
+	    zlog (peer->log, LOG_DEBUG, "rcvd End-of-RIB for VPNv4 Unicast from %s",
+		  peer->host);
+	}
+    }
+  if (peer->afc[AFI_IP][SAFI_ENCAP])
+    {
+      if (mp_update.length 
+	  && mp_update.afi == AFI_IP 
+	  && mp_update.safi == SAFI_ENCAP)
+	bgp_nlri_parse_encap (mp_update.afi, peer, &attr, &mp_update, 0);
+
+      if (mp_withdraw.length 
+	  && mp_withdraw.afi == AFI_IP 
+	  && mp_withdraw.safi == SAFI_ENCAP)
+	bgp_nlri_parse_encap (mp_withdraw.afi, peer, &attr, &mp_withdraw, 1);
+
+      if (! withdraw_len
+	  && mp_withdraw.afi == AFI_IP
+	  && mp_withdraw.safi == BGP_SAFI_VPN
+	  && mp_withdraw.length == 0)
+	{
+	  /* End-of-RIB received */
+
+	  if (BGP_DEBUG (update, UPDATE_IN))
+	    zlog (peer->log, LOG_DEBUG, "rcvd End-of-RIB for Encap Unicast from %s",
+		  peer->host);
+	}
+    }
+  if (peer->afc[AFI_IP6][SAFI_ENCAP])
+    {
+      if (mp_update.length 
+	  && mp_update.afi == AFI_IP6 
+	  && mp_update.safi == SAFI_ENCAP)
+	bgp_nlri_parse_encap (mp_update.afi, peer, &attr, &mp_update, 0);
+
+      if (mp_withdraw.length 
+	  && mp_withdraw.afi == AFI_IP6
+	  && mp_withdraw.safi == SAFI_ENCAP)
+	bgp_nlri_parse_encap (mp_withdraw.afi, peer, &attr, &mp_withdraw, 1);
+
+      if (! withdraw_len
+	  && mp_withdraw.afi == AFI_IP6
+	  && mp_withdraw.safi == BGP_SAFI_VPN
+	  && mp_withdraw.length == 0)
+	{
+	  /* End-of-RIB received */
+
+	  if (BGP_DEBUG (update, UPDATE_IN))
+	    zlog (peer->log, LOG_DEBUG, "rcvd End-of-RIB for Encap Unicast from %s",
+		  peer->host);
+	}
+    }
 
   /* Everything is done.  We unintern temporary structures which
      interned in bgp_attr_parse(). */
   bgp_attr_unintern_sub (&attr);
+  bgp_attr_flush (&attr);
 
   /* If peering is stopped due to some reason, do not generate BGP
      event.  */

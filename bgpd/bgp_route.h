@@ -82,6 +82,9 @@ struct bgp_info
 #define BGP_INFO_COUNTED	(1 << 10)
 #define BGP_INFO_MULTIPATH      (1 << 11)
 #define BGP_INFO_MULTIPATH_CHG  (1 << 12)
+#define BGP_INFO_ANNOUNCED_ZEBRA (1 << 13)	/* did we annc to Zebra? */
+#define BGP_INFO_ANNOUNCED_DIRECT_BGP (1 << 14)	/* did we annc to direct bgp? */
+#define BGP_INFO_FORCE_KERNEL	(1 << 15)	/* force announce to zebra */
 
   /* BGP route type.  This can be static, RIP, OSPF, BGP etc.  */
   u_char type;
@@ -120,8 +123,14 @@ struct bgp_static
     struct route_map *map;
   } rmap;
 
+  /* Route Distinguisher */
+  struct prefix_rd	prd;
+
   /* MPLS label.  */
   u_char tag[3];
+
+  /* gpz: allow announcing to kernel/zebra */
+  u_char force_kernel_announce;
 };
 
 /* Flags which indicate a route is unuseable in some form */
@@ -193,7 +202,7 @@ extern struct bgp_info_extra *bgp_info_extra_get (struct bgp_info *);
 extern void bgp_info_set_flag (struct bgp_node *, struct bgp_info *, u_int32_t);
 extern void bgp_info_unset_flag (struct bgp_node *, struct bgp_info *, u_int32_t);
 
-extern int bgp_nlri_sanity_check (struct peer *, int, u_char *, bgp_size_t);
+extern int bgp_nlri_sanity_check (struct peer *, int, safi_t, u_char *, bgp_size_t);
 extern int bgp_nlri_parse (struct peer *, struct attr *, struct bgp_nlri *);
 
 extern int bgp_maximum_prefix_overflow (struct peer *, afi_t, safi_t, int);
@@ -209,10 +218,10 @@ extern void bgp_static_update (struct bgp *, struct prefix *, struct bgp_static 
 			afi_t, safi_t);
 extern void bgp_static_withdraw (struct bgp *, struct prefix *, afi_t, safi_t);
                      
-extern int bgp_static_set_vpnv4 (struct vty *vty, const char *, 
-                          const char *, const char *);
+extern int bgp_static_set_safi (safi_t safi, struct vty *vty, const char *, 
+                          const char *, const char *, const char *);
 
-extern int bgp_static_unset_vpnv4 (struct vty *, const char *, 
+extern int bgp_static_unset_safi (safi_t safi, struct vty *, const char *, 
                             const char *, const char *);
 
 /* this is primarily for MPLS-VPN */
@@ -237,8 +246,25 @@ extern u_char bgp_distance_apply (struct prefix *, struct bgp_info *, struct bgp
 extern afi_t bgp_node_afi (struct vty *);
 extern safi_t bgp_node_safi (struct vty *);
 
-extern void route_vty_out (struct vty *, struct prefix *, struct bgp_info *, int, safi_t);
+extern void route_vty_out (struct vty *, struct prefix *, struct bgp_info *, int, safi_t, int);
 extern void route_vty_out_tag (struct vty *, struct prefix *, struct bgp_info *, int, safi_t);
 extern void route_vty_out_tmp (struct vty *, struct prefix *, struct attr *, safi_t);
+
+extern struct bgp_node *
+bgp_afi_node_get (struct bgp_table *table, afi_t afi, safi_t safi, struct prefix *p,
+		  struct prefix_rd *prd);
+extern struct bgp_info *bgp_info_new (void);
+extern void bgp_info_restore (struct bgp_node *rn, struct bgp_info *ri);
+extern int bgp_info_cmp (struct bgp *bgp, struct bgp_info *new, struct bgp_info *exist,
+                         int *paths_eq);
+extern void
+bgp_rib_remove (struct bgp_node *rn, struct bgp_info *ri, struct peer *peer,
+		afi_t afi, safi_t safi);
+
+extern void
+bgp_peer_clear_node_queue_drain_immediate(struct peer *peer);
+
+extern void
+bgp_process_queues_drain_immediate(void);
 
 #endif /* _QUAGGA_BGP_ROUTE_H */

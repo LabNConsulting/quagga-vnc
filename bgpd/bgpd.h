@@ -122,7 +122,8 @@ struct bgp
 #define BGP_FLAG_LOG_NEIGHBOR_CHANGES     (1 << 11)
 #define BGP_FLAG_GRACEFUL_RESTART         (1 << 12)
 #define BGP_FLAG_ASPATH_CONFED            (1 << 13)
-#define BGP_FLAG_ASPATH_MULTIPATH_RELAX   (1 << 14)
+#define BGP_FLAG_DELETING                 (1 << 14)
+#define BGP_FLAG_ASPATH_MULTIPATH_RELAX   (1 << 15)
 
   /* BGP Per AF flags */
   u_int16_t af_flags[AFI_MAX][SAFI_MAX];
@@ -649,6 +650,7 @@ struct bgp_nlri
 #define BGP_ATTR_AS4_PATH                       17
 #define BGP_ATTR_AS4_AGGREGATOR                 18
 #define BGP_ATTR_AS_PATHLIMIT                   21
+#define BGP_ATTR_ENCAP                          23
 
 /* BGP update origin.  */
 #define BGP_ORIGIN_IGP                           0
@@ -762,6 +764,7 @@ struct bgp_nlri
 
 /* RFC4364 */
 #define SAFI_MPLS_LABELED_VPN                  128
+#define BGP_SAFI_VPN				128
 
 /* Max TTL value.  */
 #define TTL_MAX                                255
@@ -994,5 +997,7 @@ extern int peer_clear_soft (struct peer *, afi_t, safi_t, enum bgp_clear_type);
 
 extern int peer_ttl_security_hops_set (struct peer *, int);
 extern int peer_ttl_security_hops_unset (struct peer *);
+
+extern struct peer * peer_new (struct bgp *bgp);
 
 #endif /* _QUAGGA_BGPD_H */

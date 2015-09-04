@@ -33,7 +33,7 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 static struct hash *ecomhash;
 
 /* Allocate a new ecommunities.  */
-static struct ecommunity *
+struct ecommunity *
 ecommunity_new (void)
 {
   return (struct ecommunity *) XCALLOC (MTYPE_ECOMMUNITY,
@@ -57,7 +57,7 @@ ecommunity_free (struct ecommunity **ecom)
    structure, we don't add the value.  Newly added value is sorted by
    numerical order.  When the value is added to the structure return 1
    else return 0.  */
-static int
+int
 ecommunity_add_val (struct ecommunity *ecom, struct ecommunity_val *eval)
 {
   u_int8_t *p;
@@ -274,6 +274,7 @@ ecommunity_init (void)
 void
 ecommunity_finish (void)
 {
+  //hash_clean (ecomhash, (void (*)(void *))ecommunity_free);
   hash_free (ecomhash);
   ecomhash = NULL;
 }
@@ -642,15 +643,33 @@ ecommunity_ecom2str (struct ecommunity *ecom, int format)
 
       /* High-order octet of type. */
       encode = *pnt++;
-      if (encode != ECOMMUNITY_ENCODE_AS && encode != ECOMMUNITY_ENCODE_IP
-		      && encode != ECOMMUNITY_ENCODE_AS4)
-	{
-	  len = sprintf (str_buf + str_pnt, "?");
-	  str_pnt += len;
-	  first = 0;
-	  continue;
-	}
-      
+
+      switch (encode) {
+
+	case ECOMMUNITY_ENCODE_AS:
+	case ECOMMUNITY_ENCODE_IP:
+	case ECOMMUNITY_ENCODE_AS4:
+	    break;
+
+	case ECOMMUNITY_ENCODE_OPAQUE:
+	    if (*pnt == ECOMMUNITY_OPAQUE_SUBTYPE_ENCAP) {
+		uint16_t	tunneltype;
+		memcpy(&tunneltype, pnt+5, 2);
+		tunneltype = ntohs(tunneltype);
+		len = sprintf(str_buf + str_pnt, "ET:%d", tunneltype);
+		str_pnt += len;
+		first = 0;
+		continue;
+	    }
+	    /* fall through */
+
+	default:
+	    len = sprintf (str_buf + str_pnt, "?");
+	    str_pnt += len;
+	    first = 0;
+	    continue;
+      }
+
       /* Low-order octet of type. */
       type = *pnt++;
       if (type !=  ECOMMUNITY_ROUTE_TARGET && type != ECOMMUNITY_SITE_ORIGIN)
