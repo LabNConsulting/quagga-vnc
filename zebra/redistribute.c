@@ -1,3 +1,8 @@
+/*
+ * This file has been modified by LabN Consulting, L.L.C.
+ *
+ */
+
 /* Redistribution Handler
  * Copyright (C) 1998 Kunihiro Ishiguro
  *
@@ -149,12 +154,18 @@ zebra_redistribute (struct zserv *client, int type, vrf_id_t vrf_id)
   table = zebra_vrf_table (AFI_IP, SAFI_UNICAST, vrf_id);
   if (table)
     for (rn = route_top (table); rn; rn = route_next (rn))
-      RNODE_FOREACH_RIB (rn, newrib)
+      RNODE_FOREACH_RIB (rn, newrib) {
+	if (IS_ZEBRA_DEBUG_EVENT) {
+	    zlog_debug("%s: checking: selected=%d, type=%d, distance=%d, zebra_check_addr=%d",
+		__func__, CHECK_FLAG (newrib->flags, ZEBRA_FLAG_SELECTED),
+		newrib->type, newrib->distance, zebra_check_addr (&rn->p));
+	}
 	if (CHECK_FLAG (newrib->flags, ZEBRA_FLAG_SELECTED) 
 	    && newrib->type == type 
 	    && newrib->distance != DISTANCE_INFINITY
 	    && zebra_check_addr (&rn->p))
 	  zsend_route_multipath (ZEBRA_IPV4_ROUTE_ADD, client, &rn->p, newrib);
+      }
   
 #ifdef HAVE_IPV6
   table = zebra_vrf_table (AFI_IP6, SAFI_UNICAST, vrf_id);

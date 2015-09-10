@@ -1,3 +1,8 @@
+/*
+ * This file has been modified by LabN Consulting, L.L.C.
+ *
+ */
+
 /* BGP Extended Communities Attribute.
    Copyright (C) 2000 Kunihiro Ishiguro <kunihiro@zebra.org>
 
@@ -25,10 +30,14 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #define ECOMMUNITY_ENCODE_AS                0x00
 #define ECOMMUNITY_ENCODE_IP                0x01
 #define ECOMMUNITY_ENCODE_AS4               0x02
+#define ECOMMUNITY_ENCODE_OPAQUE	    0x03
 
-/* Low-order octet of the Extended Communityes type field.  */
+/* Low-order octet of the Extended Communities type field.  */
 #define ECOMMUNITY_ROUTE_TARGET             0x02
 #define ECOMMUNITY_SITE_ORIGIN              0x03
+
+/* Low-order octet of the Extended Communities type field for OPAQUE types */
+#define ECOMMUNITY_OPAQUE_SUBTYPE_ENCAP	    0x0c
 
 /* Extended communities attribute string format.  */
 #define ECOMMUNITY_FORMAT_ROUTE_MAP            0
@@ -80,5 +89,7 @@ extern struct ecommunity *ecommunity_str2com (const char *, int, int);
 extern char *ecommunity_ecom2str (struct ecommunity *, int);
 extern int ecommunity_match (const struct ecommunity *, const struct ecommunity *);
 extern char *ecommunity_str (struct ecommunity *);
+extern int ecommunity_add_val (struct ecommunity *, struct ecommunity_val *);
+extern struct ecommunity *ecommunity_new (void);
 
 #endif /* _QUAGGA_BGP_ECOMMUNITY_H */

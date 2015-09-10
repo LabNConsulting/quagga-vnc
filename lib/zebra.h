@@ -1,3 +1,8 @@
+/*
+ * This file has been modified by LabN Consulting, L.L.C.
+ *
+ */
+
 /* Zebra common header.
    Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002 Kunihiro Ishiguro
 
@@ -415,6 +420,8 @@ struct in_pktinfo
 #define ZEBRA_VRF_UNREGISTER              25
 #define ZEBRA_MESSAGE_MAX                 26
 
+
+
 /* Marker value used in new Zserv, in the byte location corresponding
  * the command value in the old zserv header. To allow old and new
  * Zserv headers to be distinguished from each other.
@@ -484,14 +491,16 @@ extern const char *zserv_command_string (unsigned int command);
 /* Address family numbers from RFC1700. */
 #define AFI_IP                    1
 #define AFI_IP6                   2
-#define AFI_MAX                   3
+#define AFI_ETHER		  3	/* RFC 1700 has "6" for 802.* */
+#define AFI_MAX                   4
 
 /* Subsequent Address Family Identifier. */
 #define SAFI_UNICAST              1
 #define SAFI_MULTICAST            2
 #define SAFI_RESERVED_3           3
 #define SAFI_MPLS_VPN             4
-#define SAFI_MAX                  5
+#define SAFI_ENCAP		  7
+#define SAFI_MAX                  8
 
 /* Filter direction.  */
 #define FILTER_IN                 0

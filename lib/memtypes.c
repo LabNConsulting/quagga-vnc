@@ -1,4 +1,9 @@
 /*
+ * This file has been modified by LabN Consulting, L.L.C.
+ *
+ */
+
+/*
  * Memory type definitions. This file is parsed by memtypes.awk to extract
  * MTYPE_ and memory_list_.. information in order to autogenerate 
  * memtypes.h.
@@ -72,6 +77,8 @@ struct memory_list memory_list_lib[] =
   { MTYPE_VRF,			"VRF"				},
   { MTYPE_VRF_NAME,		"VRF name"			},
   { MTYPE_VRF_BITMAP,		"VRF bit-map"			},
+  { MTYPE_SKIP_LIST,		"Skip List"			},
+  { MTYPE_SKIP_LIST_NODE,	"Skip Node"			},
   { -1, NULL },
 };
 
@@ -155,6 +162,7 @@ struct memory_list memory_list_bgp[] =
   { MTYPE_BGP_REGEXP,		"BGP regexp"			},
   { MTYPE_BGP_AGGREGATE,	"BGP aggregate"			},
   { MTYPE_BGP_ADDR,		"BGP own address"		},
+  { MTYPE_ENCAP_TLV,		"ENCAP TLV",			},
   { -1, NULL }
 };
 
@@ -279,7 +287,6 @@ struct memory_list memory_list_vtysh[] =
   { MTYPE_VTYSH_CONFIG_LINE,	"Vtysh configuration line"	},
   { -1, NULL },
 };
-
 struct mlist mlists[] __attribute__ ((unused)) = {
   { memory_list_lib,	"LIB"	},
   { memory_list_zebra,	"ZEBRA"	},

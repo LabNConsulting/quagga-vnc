@@ -1,3 +1,8 @@
+/*
+ * This file has been modified by LabN Consulting, L.L.C.
+ *
+ */
+
 /* BGP attributes. 
    Copyright (C) 1996, 97, 98 Kunihiro Ishiguro
 
@@ -47,6 +52,13 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #define BGP_ATTR_MIN_LEN        3       /* Attribute flag, type length. */
 #define BGP_ATTR_DEFAULT_WEIGHT 32768
 
+struct bgp_attr_encap_tlv {
+    struct bgp_attr_encap_tlv	*next;		/* for chaining */
+    uint16_t			type;
+    uint16_t			length;
+    uint8_t			value[1];	/* will be extended */
+};
+
 /* Additional/uncommon BGP attributes.
  * lazily allocated as and when a struct attr
  * requires it.
@@ -85,6 +97,8 @@ struct attr_extra
   
   /* MP Nexthop length */
   u_char mp_nexthop_len;
+
+  struct bgp_attr_encap_tlv *encap_subtlvs;
 };
 
 /* BGP core attribute structure. */
@@ -194,6 +208,12 @@ extern int bgp_mp_reach_parse (struct bgp_attr_parser_args *args,
 extern int bgp_mp_unreach_parse (struct bgp_attr_parser_args *args,
                                  struct bgp_nlri *);
 
+extern struct bgp_attr_encap_tlv *
+encap_tlv_dup(struct bgp_attr_encap_tlv *orig);
+
+extern void
+bgp_attr_flush_encap(struct attr *attr);
+
 /**
  * Set of functions to encode MP_REACH_NLRI and MP_UNREACH_NLRI attributes.
  * Typical call sequence is to call _start(), followed by multiple _prefix(),
@@ -205,6 +225,8 @@ extern size_t bgp_packet_mpattr_start(struct stream *s, afi_t afi, safi_t safi,
 extern void bgp_packet_mpattr_prefix(struct stream *s, afi_t afi, safi_t safi,
 				     struct prefix *p, struct prefix_rd *prd,
 				     u_char *tag);
+extern size_t bgp_packet_mpattr_prefix_size(afi_t afi, safi_t safi,
+                                            struct prefix *p);
 extern void bgp_packet_mpattr_end(struct stream *s, size_t sizep);
 
 extern size_t bgp_packet_mpunreach_start (struct stream *s, afi_t afi,
