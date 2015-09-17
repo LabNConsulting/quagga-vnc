@@ -5857,7 +5857,7 @@ bgp_redistribute_add (struct prefix *p, const struct in_addr *nexthop,
 	    attr_new.med = bgp->redist_metric[afi][type];
 
 	  /* Apply route-map. */
-	  if (bgp->rmap[afi][type].map)
+	  if (bgp->rmap[afi][type].name)
 	    {
 	      info.peer = bgp->peer_self;
 	      info.attr = &attr_new;
