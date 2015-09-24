@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* zebra connection and redistribute fucntions.
    Copyright (C) 1999 Kunihiro Ishiguro
 
@@ -30,7 +25,7 @@ Boston, MA 02111-1307, USA.  */
 
 extern struct stream *bgp_nexthop_buf;
 
-extern void bgp_zebra_init (void);
+extern void bgp_zebra_init (struct thread_master *master);
 extern void bgp_zebra_destroy(void);
 extern int bgp_if_update_all (void);
 extern int bgp_config_write_maxpaths (struct vty *, struct bgp *, afi_t,
