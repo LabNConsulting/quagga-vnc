@@ -661,9 +661,9 @@ bgp_connected_add (struct connected *ifc)
 
   addr = ifc->address;
 
+  p = *(CONNECTED_PREFIX(ifc));
   if (addr->family == AF_INET)
     {
-      PREFIX_COPY_IPV4(&p, CONNECTED_PREFIX(ifc));
       apply_mask_ipv4 ((struct prefix_ipv4 *) &p);
 
       if (prefix_ipv4_any ((struct prefix_ipv4 *) &p))
@@ -687,7 +687,6 @@ bgp_connected_add (struct connected *ifc)
 #ifdef HAVE_IPV6
   else if (addr->family == AF_INET6)
     {
-      PREFIX_COPY_IPV6(&p, CONNECTED_PREFIX(ifc));
       apply_mask_ipv6 ((struct prefix_ipv6 *) &p);
 
       if (IN6_IS_ADDR_UNSPECIFIED (&p.u.prefix6))
@@ -728,9 +727,9 @@ bgp_connected_delete (struct connected *ifc)
 
   addr = ifc->address;
 
+  p = *(CONNECTED_PREFIX(ifc));
   if (addr->family == AF_INET)
     {
-      PREFIX_COPY_IPV4(&p, CONNECTED_PREFIX(ifc));
       apply_mask_ipv4 ((struct prefix_ipv4 *) &p);
 
       if (prefix_ipv4_any ((struct prefix_ipv4 *) &p))
@@ -755,7 +754,6 @@ bgp_connected_delete (struct connected *ifc)
 #ifdef HAVE_IPV6
   else if (addr->family == AF_INET6)
     {
-      PREFIX_COPY_IPV6(&p, CONNECTED_PREFIX(ifc));
       apply_mask_ipv6 ((struct prefix_ipv6 *) &p);
 
       if (IN6_IS_ADDR_UNSPECIFIED (&p.u.prefix6))
