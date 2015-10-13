@@ -1,3 +1,8 @@
+/*
+ * This file has been modified by LabN Consulting, L.L.C.
+ *
+ */
+
 /* BGP-4 Finite State Machine   
    From RFC1771 [A Border Gateway Protocol 4 (BGP-4)]
    Copyright (C) 1996, 97, 98 Kunihiro Ishiguro
@@ -294,12 +299,12 @@ bgp_routeadv_timer (struct thread *thread)
   peer = THREAD_ARG (thread);
   peer->t_routeadv = NULL;
 
+  peer->synctime = bgp_clock ();
+
   if (BGP_DEBUG (fsm, FSM))
     zlog (peer->log, LOG_DEBUG,
-	  "%s [FSM] Timer (routeadv timer expire)",
-	  peer->host);
-
-  peer->synctime = bgp_clock ();
+	  "%s [FSM] Timer (routeadv timer expire), peer->synctime=%d",
+	  peer->host, (int)(peer->synctime));
 
   BGP_WRITE_ON (peer->t_write, bgp_write, peer->fd);
 
