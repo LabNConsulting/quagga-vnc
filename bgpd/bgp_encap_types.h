@@ -39,49 +39,136 @@ typedef enum {
     BGP_ENCAP_TYPE_PBB
 } bgp_encap_types;
 
+typedef enum {
+    BGP_ENCAP_SUBTLV_TYPE_ENCAPSULATION=1,
+    BGP_ENCAP_SUBTLV_TYPE_PROTO_TYPE=2,
+    BGP_ENCAP_SUBTLV_TYPE_IPSEC_TA=3,
+    BGP_ENCAP_SUBTLV_TYPE_COLOR=4,
+} bgp_encap_subtlv_types;
+
+/*
+ * Tunnel Encapsulation Attribute subtlvs
+ */
+struct bgp_tea_subtlv_encap_l2tpv3_over_ip {
+    uint32_t	sessionid;
+    uint8_t	cookie_length;
+    uint8_t	cookie[8];
+};
+
+struct bgp_tea_subtlv_encap_gre_key {
+    uint32_t	gre_key;
+};
+
+struct bgp_tea_subtlv_encap_pbb {
+    uint32_t	flag_isid:1;
+    uint32_t	flag_vid:1;
+    uint32_t	isid:24;
+    uint16_t	vid:12;
+    uint8_t	macaddr[6];
+};
+
+struct bgp_tea_subtlv_proto_type {
+    uint16_t	proto;			/* ether-type */
+};
+
+struct bgp_tea_subtlv_color {
+    uint32_t	color;
+};
+
+/*
+ * This is the length of the value part of the ipsec tunnel authenticator
+ * subtlv. Currently we only support the length for authenticator type 1.
+ */
+#define BGP_ENCAP_SUBTLV_IPSEC_TA_SIZE	20
+
+struct bgp_tea_subtlv_ipsec_ta {
+    uint16_t	authenticator_type;	/* only type 1 is supported so far */
+    uint8_t	authenticator_length;	/* octets in value field */
+    uint8_t	value[BGP_ENCAP_SUBTLV_IPSEC_TA_SIZE];
+};
+
+/*
+ * Subtlv valid flags
+ * TBD change names to add "VALID"
+ */
+#define BGP_TEA_SUBTLV_ENCAP		0x00000001
+#define BGP_TEA_SUBTLV_PROTO_TYPE	0x00000002
+#define BGP_TEA_SUBTLV_COLOR		0x00000004
+#define BGP_TEA_SUBTLV_IPSEC_TA		0x00000008
+
+
+/*
+ * Tunnel Type-specific APIs
+ */
 struct bgp_encap_type_reserved {
 };
 
 struct bgp_encap_type_l2tpv3_over_ip {
+    uint32_t					valid_subtlvs;
+    struct bgp_tea_subtlv_encap_l2tpv3_over_ip	st_encap;
+    struct bgp_tea_subtlv_proto_type		st_proto;	/* optional */
+    struct bgp_tea_subtlv_color			st_color;	/* optional */
 };
 
 struct bgp_encap_type_gre {
-};
-
-struct bgp_encap_type_transmit_tunnel_endpoint {
-};
-
-struct bgp_encap_type_ipsec_in_tunnel_mode {
-};
-
-struct bgp_encap_type_ip_in_ip_tunnel_with_ipsec_transport_mode {
-};
-
-struct bgp_encap_type_mpls_in_ip_tunnel_with_ipsec_transport_mode {
+    uint32_t					valid_subtlvs;
+    struct bgp_tea_subtlv_encap_gre_key		st_encap;	/* optional */
+    struct bgp_tea_subtlv_proto_type		st_proto;	/* optional */
+    struct bgp_tea_subtlv_color			st_color;	/* optional */
 };
 
 struct bgp_encap_type_ip_in_ip {
+    uint32_t					valid_subtlvs;
+    struct bgp_tea_subtlv_proto_type		st_proto;	/* optional */
+    struct bgp_tea_subtlv_color			st_color;	/* optional */
+};
+
+struct bgp_encap_type_transmit_tunnel_endpoint {
+    /* No subtlvs defined in spec? */
+};
+
+struct bgp_encap_type_ipsec_in_tunnel_mode {
+    uint32_t					valid_subtlvs;
+    struct bgp_tea_subtlv_ipsec_ta		st_ipsec_ta;	/* optional */
+};
+
+struct bgp_encap_type_ip_in_ip_tunnel_with_ipsec_transport_mode {
+    uint32_t					valid_subtlvs;
+    struct bgp_tea_subtlv_ipsec_ta		st_ipsec_ta;	/* optional */
+};
+
+struct bgp_encap_type_mpls_in_ip_tunnel_with_ipsec_transport_mode {
+    uint32_t					valid_subtlvs;
+    struct bgp_tea_subtlv_ipsec_ta		st_ipsec_ta;	/* optional */
 };
 
 struct bgp_encap_type_vxlan {
+    /* No subtlvs defined in spec? */
 };
 
 struct bgp_encap_type_nvgre {
+    /* No subtlvs defined in spec? */
 };
 
 struct bgp_encap_type_mpls {
+    /* No subtlvs defined in spec? */
 };
 
 struct bgp_encap_type_mpls_in_gre {
+    /* No subtlvs defined in spec? */
 };
 
 struct bgp_encap_type_vxlan_gpe {
+    /* No subtlvs defined in spec? */
 };
 
 struct bgp_encap_type_mpls_in_udp {
+    /* No subtlvs defined in spec? */
 };
 
 struct bgp_encap_type_pbb {
+    uint32_t					valid_subtlvs;
+    struct bgp_tea_subtlv_encap_pbb		st_encap;
 };
 
 #endif /* _QUAGGA_BGP_ENCAP_TYPES_H */
