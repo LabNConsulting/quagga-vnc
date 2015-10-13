@@ -52,11 +52,11 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #define BGP_ATTR_MIN_LEN        3       /* Attribute flag, type length. */
 #define BGP_ATTR_DEFAULT_WEIGHT 32768
 
-struct bgp_attr_encap_tlv {
-    struct bgp_attr_encap_tlv	*next;		/* for chaining */
-    uint16_t			type;
-    uint16_t			length;
-    uint8_t			value[1];	/* will be extended */
+struct bgp_attr_encap_subtlv {
+    struct bgp_attr_encap_subtlv	*next;		/* for chaining */
+    uint16_t				type;
+    uint16_t				length;
+    uint8_t				value[1];	/* will be extended */
 };
 
 /* Additional/uncommon BGP attributes.
@@ -98,7 +98,8 @@ struct attr_extra
   /* MP Nexthop length */
   u_char mp_nexthop_len;
 
-  struct bgp_attr_encap_tlv *encap_subtlvs;
+  uint16_t			encap_tunneltype;	/* grr */
+  struct bgp_attr_encap_subtlv *encap_subtlvs;		/* rfc5512 */
 };
 
 /* BGP core attribute structure. */
@@ -208,8 +209,8 @@ extern int bgp_mp_reach_parse (struct bgp_attr_parser_args *args,
 extern int bgp_mp_unreach_parse (struct bgp_attr_parser_args *args,
                                  struct bgp_nlri *);
 
-extern struct bgp_attr_encap_tlv *
-encap_tlv_dup(struct bgp_attr_encap_tlv *orig);
+extern struct bgp_attr_encap_subtlv *
+encap_tlv_dup(struct bgp_attr_encap_subtlv *orig);
 
 extern void
 bgp_attr_flush_encap(struct attr *attr);
