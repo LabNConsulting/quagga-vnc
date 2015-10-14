@@ -534,7 +534,7 @@ static int
 bgp_scan_timer (struct thread *t)
 {
   bgp_scan_thread =
-    thread_add_timer (master, bgp_scan_timer, NULL, bgp_scan_interval);
+    thread_add_timer (bm->master, bgp_scan_timer, NULL, bgp_scan_interval);
 
   if (BGP_DEBUG (events, EVENTS))
     zlog_debug ("Performing BGP general scanning");
@@ -1116,7 +1116,7 @@ bgp_import (struct thread *t)
   safi_t safi;
 
   bgp_import_thread = 
-    thread_add_timer (master, bgp_import, NULL, bgp_import_interval);
+    thread_add_timer (bm->master, bgp_import, NULL, bgp_import_interval);
 
   if (BGP_DEBUG (events, EVENTS))
     zlog_debug ("Import timer expired.");
@@ -1243,7 +1243,7 @@ DEFUN (bgp_scan_time,
     {
       thread_cancel (bgp_scan_thread);
       bgp_scan_thread = 
-	thread_add_timer (master, bgp_scan_timer, NULL, bgp_scan_interval);
+	thread_add_timer (bm->master, bgp_scan_timer, NULL, bgp_scan_interval);
     }
 
   return CMD_SUCCESS;
@@ -1262,7 +1262,7 @@ DEFUN (no_bgp_scan_time,
     {
       thread_cancel (bgp_scan_thread);
       bgp_scan_thread = 
-	thread_add_timer (master, bgp_scan_timer, NULL, bgp_scan_interval);
+	thread_add_timer (bm->master, bgp_scan_timer, NULL, bgp_scan_interval);
     }
 
   return CMD_SUCCESS;
@@ -1413,9 +1413,9 @@ bgp_config_write_scan_time (struct vty *vty)
 void
 bgp_scan_init (void)
 {
-  zlookup = zclient_new (master);
+  zlookup = zclient_new (bm->master);
   zlookup->sock = -1;
-  zlookup->t_connect = thread_add_event (master, zlookup_connect, zlookup, 0);
+  zlookup->t_connect = thread_add_event (bm->master, zlookup_connect, zlookup, 0);
 
   bgp_scan_interval = BGP_SCAN_INTERVAL_DEFAULT;
   bgp_import_interval = BGP_IMPORT_INTERVAL_DEFAULT;
@@ -1434,10 +1434,10 @@ bgp_scan_init (void)
 #endif /* HAVE_IPV6 */
 
   /* Make BGP scan thread. */
-  bgp_scan_thread = thread_add_timer (master, bgp_scan_timer, 
+  bgp_scan_thread = thread_add_timer (bm->master, bgp_scan_timer, 
                                       NULL, bgp_scan_interval);
   /* Make BGP import there. */
-  bgp_import_thread = thread_add_timer (master, bgp_import, NULL, 0);
+  bgp_import_thread = thread_add_timer (bm->master, bgp_import, NULL, 0);
 
   install_element (BGP_NODE, &bgp_scan_time_cmd);
   install_element (BGP_NODE, &no_bgp_scan_time_cmd);
