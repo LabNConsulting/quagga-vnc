@@ -106,7 +106,6 @@ bgp_timer_set (struct peer *peer)
       BGP_TIMER_OFF (peer->t_connect);
       BGP_TIMER_OFF (peer->t_holdtime);
       BGP_TIMER_OFF (peer->t_keepalive);
-      BGP_TIMER_OFF (peer->t_asorig);
       BGP_TIMER_OFF (peer->t_routeadv);
       break;
 
@@ -118,7 +117,6 @@ bgp_timer_set (struct peer *peer)
       BGP_TIMER_ON (peer->t_connect, bgp_connect_timer, peer->v_connect);
       BGP_TIMER_OFF (peer->t_holdtime);
       BGP_TIMER_OFF (peer->t_keepalive);
-      BGP_TIMER_OFF (peer->t_asorig);
       BGP_TIMER_OFF (peer->t_routeadv);
       break;
 
@@ -138,7 +136,6 @@ bgp_timer_set (struct peer *peer)
 	}
       BGP_TIMER_OFF (peer->t_holdtime);
       BGP_TIMER_OFF (peer->t_keepalive);
-      BGP_TIMER_OFF (peer->t_asorig);
       BGP_TIMER_OFF (peer->t_routeadv);
       break;
 
@@ -156,7 +153,6 @@ bgp_timer_set (struct peer *peer)
 	  BGP_TIMER_OFF (peer->t_holdtime);
 	}
       BGP_TIMER_OFF (peer->t_keepalive);
-      BGP_TIMER_OFF (peer->t_asorig);
       BGP_TIMER_OFF (peer->t_routeadv);
       break;
 
@@ -179,7 +175,6 @@ bgp_timer_set (struct peer *peer)
 	  BGP_TIMER_ON (peer->t_keepalive, bgp_keepalive_timer, 
 			peer->v_keepalive);
 	}
-      BGP_TIMER_OFF (peer->t_asorig);
       BGP_TIMER_OFF (peer->t_routeadv);
       break;
 
@@ -203,7 +198,6 @@ bgp_timer_set (struct peer *peer)
 	  BGP_TIMER_ON (peer->t_keepalive, bgp_keepalive_timer,
 			peer->v_keepalive);
 	}
-      BGP_TIMER_OFF (peer->t_asorig);
       break;
     case Deleted:
       BGP_TIMER_OFF (peer->t_gr_restart);
@@ -214,7 +208,6 @@ bgp_timer_set (struct peer *peer)
       BGP_TIMER_OFF (peer->t_connect);
       BGP_TIMER_OFF (peer->t_holdtime);
       BGP_TIMER_OFF (peer->t_keepalive);
-      BGP_TIMER_OFF (peer->t_asorig);
       BGP_TIMER_OFF (peer->t_routeadv);
     }
 }
@@ -527,7 +520,6 @@ bgp_stop (struct peer *peer)
   BGP_TIMER_OFF (peer->t_connect);
   BGP_TIMER_OFF (peer->t_holdtime);
   BGP_TIMER_OFF (peer->t_keepalive);
-  BGP_TIMER_OFF (peer->t_asorig);
   BGP_TIMER_OFF (peer->t_routeadv);
 
   /* Stream reset. */
