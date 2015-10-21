@@ -1980,6 +1980,7 @@ bgp_create (as_t *as, const char *name)
   bgp->default_keepalive = BGP_DEFAULT_KEEPALIVE;
   bgp->restart_time = BGP_DEFAULT_RESTART_TIME;
   bgp->stalepath_time = BGP_DEFAULT_STALEPATH_TIME;
+  bgp_flag_set (bgp, BGP_FLAG_LOG_NEIGHBOR_CHANGES);
 
   bgp->as = *as;
 
@@ -5296,8 +5297,8 @@ bgp_config_write (struct vty *vty)
 		 VTY_NEWLINE);
 
       /* BGP log-neighbor-changes. */
-      if (bgp_flag_check (bgp, BGP_FLAG_LOG_NEIGHBOR_CHANGES))
-	vty_out (vty, " bgp log-neighbor-changes%s", VTY_NEWLINE);
+      if (!bgp_flag_check (bgp, BGP_FLAG_LOG_NEIGHBOR_CHANGES))
+	vty_out (vty, " no bgp log-neighbor-changes%s", VTY_NEWLINE);
 
       /* BGP configuration. */
       if (bgp_flag_check (bgp, BGP_FLAG_ALWAYS_COMPARE_MED))
