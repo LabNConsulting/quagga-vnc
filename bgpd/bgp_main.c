@@ -37,6 +37,7 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #include "plist.h"
 #include "stream.h"
 #include "vrf.h"
+#include "workqueue.h"
 
 #include "bgpd/bgpd.h"
 #include "bgpd/bgp_attr.h"
@@ -199,10 +200,11 @@ sigint (void)
 {
   zlog_notice ("Terminating on signal");
 
-  if (! retain_mode)
-    bgp_terminate ();
-
-  zprivs_terminate (&bgpd_privs);
+  if (! retain_mode) 
+     {
+       bgp_terminate ();
+       zprivs_terminate (&bgpd_privs);
+     }
   bgp_exit (0);
 }
 
@@ -237,6 +239,26 @@ bgp_exit (int status)
   for (ALL_LIST_ELEMENTS (bm->bgp, node, nnode, bgp))
     bgp_delete (bgp);
   list_free (bm->bgp);
+  bm->bgp = NULL;
+
+  /*
+   * bgp_delete can re-allocate the process queues after they were
+   * deleted in bgp_terminate. delete them again.
+   *
+   * It might be better to ensure the RIBs (including static routes)
+   * are cleared by bgp_terminate() during its call to bgp_cleanup_routes(),
+   * which currently only deletes the kernel routes.
+   */
+  if (bm->process_main_queue)
+    {
+      work_queue_free (bm->process_main_queue);
+      bm->process_main_queue = NULL;
+    }
+  if (bm->process_rsclient_queue)
+    {
+      work_queue_free (bm->process_rsclient_queue);
+      bm->process_rsclient_queue = NULL;
+    }
 
   /* reverse bgp_master_init */
   for (ALL_LIST_ELEMENTS_RO(bm->listen_sockets, node, socket))
