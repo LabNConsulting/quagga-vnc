@@ -413,7 +413,7 @@ vty_command (struct vty *vty, char *buf)
           cp++;
   }
   if (cp != NULL && *cp != '\0') {
-    int i;
+    unsigned i;
     char	vty_str[VTY_BUFSIZ];
     char        prompt_str[VTY_BUFSIZ];
 
