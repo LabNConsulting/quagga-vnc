@@ -227,7 +227,7 @@ family2afi (int family)
   return 0;
 }
 
-char *
+const char *
 safi2str(safi_t safi)
 {
   switch (safi) {
