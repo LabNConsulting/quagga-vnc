@@ -895,7 +895,7 @@ make_aspath (const u_char *data, size_t len, int use32bit)
       s = stream_new (len);
       stream_put (s, data, len);
     }
-  as = aspath_parse (s, len, use32bit, 0);
+  as = aspath_parse (s, len, use32bit);
   
   if (s)
     stream_free (s);
