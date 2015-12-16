@@ -111,7 +111,7 @@ bgp_nlri_parse_vpn(
   struct prefix p;
   int psize = 0;
   int prefixlen;
-  u_int32_t label;
+  u_int32_t label __attribute__((unused));
   u_int16_t type;
   struct rd_as rd_as;
   struct rd_ip rd_ip;
