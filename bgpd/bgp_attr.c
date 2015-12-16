@@ -1665,8 +1665,8 @@ bgp_mp_reach_parse (struct bgp_attr_parser_args *args,
 #ifdef HAVE_IPV6
     case 24:
       {
-	u_int32_t rd_high;
-	u_int32_t rd_low;
+	u_int32_t rd_high __attribute__((unused));
+	u_int32_t rd_low __attribute__((unused));
 
 	rd_high = stream_getl (s);
 	rd_low = stream_getl (s);
@@ -1678,8 +1678,8 @@ bgp_mp_reach_parse (struct bgp_attr_parser_args *args,
     case 32:
     case 48:
       if (attre->mp_nexthop_len == 48) {
-	u_int32_t rd_high;
-	u_int32_t rd_low;
+	u_int32_t rd_high __attribute__((unused));
+	u_int32_t rd_low __attribute__((unused));
 
 	rd_high = stream_getl (s);
 	rd_low = stream_getl (s);
@@ -1687,8 +1687,8 @@ bgp_mp_reach_parse (struct bgp_attr_parser_args *args,
       stream_get (&attre->mp_nexthop_global, s, 16);
 
       if (attre->mp_nexthop_len == 48) {
-	u_int32_t rd_high;
-	u_int32_t rd_low;
+	u_int32_t rd_high __attribute__((unused));
+	u_int32_t rd_low __attribute__((unused));
 
 	rd_high = stream_getl (s);
 	rd_low = stream_getl (s);
