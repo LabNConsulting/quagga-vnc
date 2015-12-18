@@ -5257,6 +5257,8 @@ bgp_config_write_peer (struct vty *vty, struct bgp *bgp,
 	     (CHECK_FLAG (peer->af_flags[afi][safi], PEER_FLAG_MED_UNCHANGED)) ?
 	     " med" : "", VTY_NEWLINE);
     }
+  if (afi == AFI_IP && safi == SAFI_UNICAST)
+      vty_out (vty, "!%s", VTY_NEWLINE); /* separate top-level neighbors for readability */
 }
 
 /* Display "address-family" configuration header. */
@@ -5270,7 +5272,7 @@ bgp_config_write_family_header (struct vty *vty, afi_t afi, safi_t safi,
   if (afi == AFI_IP && safi == SAFI_UNICAST)
     return;
 
-  vty_out (vty, "!%s address-family ", VTY_NEWLINE);
+  vty_out (vty, " address-family ");
 
   if (afi == AFI_IP)
     {
@@ -5329,7 +5331,7 @@ bgp_config_write_family (struct vty *vty, struct bgp *bgp, afi_t afi,
   bgp_config_write_maxpaths (vty, bgp, afi, safi, &write);
 
   if (write)
-    vty_out (vty, " exit-address-family%s", VTY_NEWLINE);
+    vty_out (vty, " exit-address-family%s!%s", VTY_NEWLINE, VTY_NEWLINE);
 
   return write;
 }
