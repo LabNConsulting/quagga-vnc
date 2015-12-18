@@ -377,7 +377,7 @@ DEFUN (router_bgp,
 {
   int ret;
   as_t as;
-  struct bgp *bgp;
+  struct bgp *bgp  = NULL;
   const char *name = NULL;
 
   VTY_GET_INTEGER_RANGE ("AS", as, argv[0], 1, BGP_AS4_MAX);
@@ -400,6 +400,8 @@ DEFUN (router_bgp,
       vty_out (vty, "BGP instance is already running; AS is %u%s",
 	       as, VTY_NEWLINE);
       return CMD_WARNING;
+    case BGP_ERR_INVALID_VALUE:
+      return CMD_SUCCESS_DAEMON;
     }
 
   vty->node = BGP_NODE;
