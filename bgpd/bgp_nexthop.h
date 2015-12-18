@@ -26,14 +26,22 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #define BGP_SCAN_INTERVAL_DEFAULT   60
 #define BGP_IMPORT_INTERVAL_DEFAULT 15
 
-#define NEXTHOP_FAMILY(nexthop_len) ( \
-  ((nexthop_len) ==  4 ||             \
-   (nexthop_len) == 12 ? AF_INET :    \
-  ((nexthop_len) == 16 ||             \
-   (nexthop_len) == 24 ||             \
-   (nexthop_len) == 48 ? AF_INET6 :   \
-  AF_UNSPEC))                         \
+#if HAVE_IPV6
+#define NEXTHOP_FAMILY(nexthop_len) (                \
+    ((nexthop_len) == 4 ||                           \
+        (nexthop_len) == 12)? AF_INET:               \
+    ((((nexthop_len) == 16 ||                        \
+         (nexthop_len) == 24 ||                      \
+         (nexthop_len) == 48))? AF_INET6:            \
+    AF_UNSPEC)                                       \
 )
+#else
+#define NEXTHOP_FAMILY(nexthop_len) (                \
+    ((nexthop_len) == 4)? AF_INET:                   \
+    (((nexthop_len) == 12)? AF_INET:                 \
+    AF_UNSPEC)                                       \
+)
+#endif
 
 /* BGP nexthop cache value structure. */
 struct bgp_nexthop_cache
