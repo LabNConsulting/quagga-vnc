@@ -9774,10 +9774,38 @@ DEFUN (show_bgp_community,
 }
 
 ALIAS (show_bgp_community,
+       show_bgp_ipv6_community_cmd,
+       "show bgp ipv6 community (AA:NN|local-AS|no-advertise|no-export)",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Display routes matching the communities\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n")
+
+ALIAS (show_bgp_community,
        show_bgp_community2_cmd,
        "show bgp community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
        SHOW_STR
        BGP_STR
+       "Display routes matching the communities\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n")
+
+ALIAS (show_bgp_community,
+       show_bgp_ipv6_community2_cmd,
+       "show bgp ipv6 community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
        "Display routes matching the communities\n"
        "community number\n"
        "Do not send outside local AS (well-known community)\n"
@@ -9808,10 +9836,54 @@ ALIAS (show_bgp_community,
        "Do not export to next AS (well-known community)\n")
 
 ALIAS (show_bgp_community,
+       show_bgp_ipv6_community3_cmd,
+       "show bgp ipv6 community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Display routes matching the communities\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n")
+
+ALIAS (show_bgp_community,
        show_bgp_community4_cmd,
        "show bgp community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
        SHOW_STR
        BGP_STR
+       "Display routes matching the communities\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n")
+
+ALIAS (show_bgp_community,
+       show_bgp_ipv6_community4_cmd,
+       "show bgp ipv6 community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
        "Display routes matching the communities\n"
        "community number\n"
        "Do not send outside local AS (well-known community)\n"
@@ -9925,10 +9997,40 @@ DEFUN (show_bgp_community_exact,
 }
 
 ALIAS (show_bgp_community_exact,
+       show_bgp_ipv6_community_exact_cmd,
+       "show bgp ipv6 community (AA:NN|local-AS|no-advertise|no-export) exact-match",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Display routes matching the communities\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "Exact match of the communities")
+
+ALIAS (show_bgp_community_exact,
        show_bgp_community2_exact_cmd,
        "show bgp community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) exact-match",
        SHOW_STR
        BGP_STR
+       "Display routes matching the communities\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "Exact match of the communities")
+
+ALIAS (show_bgp_community_exact,
+       show_bgp_ipv6_community2_exact_cmd,
+       "show bgp ipv6 community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) exact-match",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
        "Display routes matching the communities\n"
        "community number\n"
        "Do not send outside local AS (well-known community)\n"
@@ -9961,10 +10063,56 @@ ALIAS (show_bgp_community_exact,
        "Exact match of the communities")
 
 ALIAS (show_bgp_community_exact,
+       show_bgp_ipv6_community3_exact_cmd,
+       "show bgp ipv6 community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) exact-match",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Display routes matching the communities\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "Exact match of the communities")
+
+ALIAS (show_bgp_community_exact,
        show_bgp_community4_exact_cmd,
        "show bgp community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) exact-match",
        SHOW_STR
        BGP_STR
+       "Display routes matching the communities\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "community number\n"
+       "Do not send outside local AS (well-known community)\n"
+       "Do not advertise to any peer (well-known community)\n"
+       "Do not export to next AS (well-known community)\n"
+       "Exact match of the communities")
+
+ALIAS (show_bgp_community_exact,
+       show_bgp_ipv6_community4_exact_cmd,
+       "show bgp ipv6 community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) exact-match",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
        "Display routes matching the communities\n"
        "community number\n"
        "Do not send outside local AS (well-known community)\n"
@@ -10733,8 +10881,8 @@ ALIAS (show_bgp_ipv4_safi_community4_exact,
 
 
 #ifdef HAVE_IPV6
-DEFUN (show_bgp_ipv6_community,
-       show_bgp_ipv6_community_cmd,
+DEFUN (show_bgp_ipv6_safi_community,
+       show_bgp_ipv6_safi_community_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) community (AA:NN|local-AS|no-advertise|no-export)",
        SHOW_STR
        BGP_STR
@@ -10758,8 +10906,8 @@ DEFUN (show_bgp_ipv6_community,
   return bgp_show_community (vty, NULL, argc-1, argv+1, 0, AFI_IP6, safi);
 }
 
-ALIAS (show_bgp_ipv6_community,
-       show_bgp_ipv6_community2_cmd,
+ALIAS (show_bgp_ipv6_safi_community,
+       show_bgp_ipv6_safi_community2_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
        SHOW_STR
        BGP_STR
@@ -10778,8 +10926,8 @@ ALIAS (show_bgp_ipv6_community,
        "Do not advertise to any peer (well-known community)\n"
        "Do not export to next AS (well-known community)\n")
 	
-ALIAS (show_bgp_ipv6_community,
-       show_bgp_ipv6_community3_cmd,
+ALIAS (show_bgp_ipv6_safi_community,
+       show_bgp_ipv6_safi_community3_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
        SHOW_STR
        BGP_STR
@@ -10802,8 +10950,8 @@ ALIAS (show_bgp_ipv6_community,
        "Do not advertise to any peer (well-known community)\n"
        "Do not export to next AS (well-known community)\n")
 
-ALIAS (show_bgp_ipv6_community,
-       show_bgp_ipv6_community4_cmd,
+ALIAS (show_bgp_ipv6_safi_community,
+       show_bgp_ipv6_safi_community4_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
        SHOW_STR
        BGP_STR
@@ -10831,8 +10979,8 @@ ALIAS (show_bgp_ipv6_community,
        "Do not export to next AS (well-known community)\n")
 
 
-DEFUN (show_bgp_ipv6_community_exact,
-       show_bgp_ipv6_community_exact_cmd,
+DEFUN (show_bgp_ipv6_safi_community_exact,
+       show_bgp_ipv6_safi_community_exact_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) community (AA:NN|local-AS|no-advertise|no-export) exact-match",
        SHOW_STR
        BGP_STR
@@ -10859,7 +11007,7 @@ DEFUN (show_bgp_ipv6_community_exact,
 
 
 ALIAS (show_bgp_community_exact,
-       show_bgp_ipv6_community2_exact_cmd,
+       show_bgp_ipv6_safi_community2_exact_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) exact-match",
        SHOW_STR
        BGP_STR
@@ -10880,7 +11028,7 @@ ALIAS (show_bgp_community_exact,
        "Exact match of the communities")
 
 ALIAS (show_bgp_community_exact,
-       show_bgp_ipv6_community3_exact_cmd,
+       show_bgp_ipv6_safi_community3_exact_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) exact-match",
        SHOW_STR
        BGP_STR
@@ -10905,7 +11053,7 @@ ALIAS (show_bgp_community_exact,
        "Exact match of the communities")
 
 ALIAS (show_bgp_community_exact,
-       show_bgp_ipv6_community4_exact_cmd,
+       show_bgp_ipv6_safi_community4_exact_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) exact-match",
        SHOW_STR
        BGP_STR
@@ -11033,6 +11181,16 @@ DEFUN (show_bgp_community_list,
   return bgp_show_community_list (vty, argv[0], 0, AFI_IP6, SAFI_UNICAST);
 }
 
+ALIAS (show_bgp_community_list,
+       show_bgp_ipv6_community_list_cmd,
+       "show bgp ipv6 community-list (<1-500>|WORD)",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Display routes matching the community-list\n"
+       "community-list number\n"
+       "community-list name\n")
+
 /* old command */
 DEFUN (show_ipv6_bgp_community_list,
        show_ipv6_bgp_community_list_cmd,
@@ -11071,6 +11229,17 @@ DEFUN (show_bgp_community_list_exact,
 {
   return bgp_show_community_list (vty, argv[0], 1, AFI_IP6, SAFI_UNICAST);
 }
+
+ALIAS (show_bgp_community_list_exact,
+       show_bgp_ipv6_community_list_exact_cmd,
+       "show bgp ipv6 community-list (<1-500>|WORD) exact-match",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Display routes matching the community-list\n"
+       "community-list number\n"
+       "community-list name\n"
+       "Exact match of the communities\n")
 
 /* old command */
 DEFUN (show_ipv6_bgp_community_list_exact,
@@ -11166,8 +11335,8 @@ DEFUN (show_bgp_ipv4_safi_community_list_exact,
 }
 
 #ifdef HAVE_IPV6
-DEFUN (show_bgp_ipv6_community_list,
-       show_bgp_ipv6_community_list_cmd,
+DEFUN (show_bgp_ipv6_safi_community_list,
+       show_bgp_ipv6_safi_community_list_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) community-list (<1-500>|WORD)",
        SHOW_STR
        BGP_STR
@@ -11189,8 +11358,8 @@ DEFUN (show_bgp_ipv6_community_list,
   return bgp_show_community_list (vty, argv[1], 0, AFI_IP6, safi);
 }
 
-DEFUN (show_bgp_ipv6_community_list_exact,
-       show_bgp_ipv6_community_list_exact_cmd,
+DEFUN (show_bgp_ipv6_safi_community_list_exact,
+       show_bgp_ipv6_safi_community_list_exact_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) community-list (<1-500>|WORD) exact-match",
        SHOW_STR
        BGP_STR
@@ -14551,9 +14720,70 @@ ALIAS (show_bgp_view_ipv6_safi_rsclient,
        "Information about Route Server Client\n"
        NEIGHBOR_ADDR_STR)
 
-
 DEFUN (show_bgp_view_rsclient_route,
        show_bgp_view_rsclient_route_cmd,
+       "show bgp view WORD rsclient (A.B.C.D|X:X::X:X) X:X::X:X",
+       SHOW_STR
+       BGP_STR
+       "BGP view\n"
+       "View name\n"
+       "Information about Route Server Client\n"
+       NEIGHBOR_ADDR_STR
+       "Network in the BGP routing table to display\n")
+{
+  struct bgp *bgp;
+  struct peer *peer;
+
+  /* BGP structure lookup. */
+  if (argc == 3)
+    {
+      bgp = bgp_lookup_by_name (argv[0]);
+      if (bgp == NULL)
+        {
+          vty_out (vty, "Can't find BGP view %s%s", argv[0], VTY_NEWLINE);
+          return CMD_WARNING;
+        }
+    }
+  else
+    {
+      bgp = bgp_get_default ();
+      if (bgp == NULL)
+        {
+          vty_out (vty, "No BGP process is configured%s", VTY_NEWLINE);
+          return CMD_WARNING;
+        }
+    }
+
+  if (argc == 3)
+    peer = peer_lookup_in_view (vty, argv[0], argv[1]);
+  else
+    peer = peer_lookup_in_view (vty, NULL, argv[0]);
+
+  if (! peer)
+    return CMD_WARNING;
+
+  if (! peer->afc[AFI_IP6][SAFI_UNICAST])
+    {
+      vty_out (vty, "%% Activate the neighbor for the address family first%s",
+            VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+
+  if ( ! CHECK_FLAG (peer->af_flags[AFI_IP6][SAFI_UNICAST],
+              PEER_FLAG_RSERVER_CLIENT))
+    {
+      vty_out (vty, "%% Neighbor is not a Route-Server client%s",
+            VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+
+  return bgp_show_route_in_table (vty, bgp, peer->rib[AFI_IP6][SAFI_UNICAST],
+                                  (argc == 3) ? argv[2] : argv[1],
+                                  AFI_IP6, SAFI_UNICAST, NULL, 0);
+}
+
+DEFUN (show_bgp_view_ipv6_rsclient_route,
+       show_bgp_view_ipv6_rsclient_route_cmd,
        "show bgp view WORD ipv6 rsclient (A.B.C.D|X:X::X:X) X:X::X:X",
        SHOW_STR
        BGP_STR
@@ -14615,8 +14845,17 @@ DEFUN (show_bgp_view_rsclient_route,
                                   AFI_IP6, SAFI_UNICAST, NULL, 0);
 }
 
-ALIAS (show_bgp_view_rsclient_route,
+ALIAS (show_bgp_view_ipv6_rsclient_route,
        show_bgp_rsclient_route_cmd,
+       "show bgp rsclient (A.B.C.D|X:X::X:X) X:X::X:X",
+       SHOW_STR
+       BGP_STR
+       "Information about Route Server Client\n"
+       NEIGHBOR_ADDR_STR
+       "Network in the BGP routing table to display\n")
+
+ALIAS (show_bgp_view_ipv6_rsclient_route,
+       show_bgp_ipv6_rsclient_route_cmd,
        "show bgp ipv6 rsclient (A.B.C.D|X:X::X:X) X:X::X:X",
        SHOW_STR
        BGP_STR
@@ -14709,6 +14948,68 @@ ALIAS (show_bgp_view_ipv6_safi_rsclient_route,
 
 DEFUN (show_bgp_view_rsclient_prefix,
        show_bgp_view_rsclient_prefix_cmd,
+       "show bgp view WORD rsclient (A.B.C.D|X:X::X:X) X:X::X:X/M",
+       SHOW_STR
+       BGP_STR
+       "BGP view\n"
+       "View name\n"
+       "Information about Route Server Client\n"
+       NEIGHBOR_ADDR_STR
+       "IPv6 prefix <network>/<length>, e.g., 3ffe::/16\n")
+{
+  struct bgp *bgp;
+  struct peer *peer;
+
+  /* BGP structure lookup. */
+  if (argc == 3)
+    {
+      bgp = bgp_lookup_by_name (argv[0]);
+      if (bgp == NULL)
+        {
+          vty_out (vty, "Can't find BGP view %s%s", argv[0], VTY_NEWLINE);
+          return CMD_WARNING;
+        }
+    }
+  else
+    {
+      bgp = bgp_get_default ();
+      if (bgp == NULL)
+        {
+          vty_out (vty, "No BGP process is configured%s", VTY_NEWLINE);
+          return CMD_WARNING;
+        }
+    }
+
+  if (argc == 3)
+    peer = peer_lookup_in_view (vty, argv[0], argv[1]);
+  else
+    peer = peer_lookup_in_view (vty, NULL, argv[0]);
+
+  if (! peer)
+    return CMD_WARNING;
+
+  if (! peer->afc[AFI_IP6][SAFI_UNICAST])
+    {
+      vty_out (vty, "%% Activate the neighbor for the address family first%s",
+            VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+
+  if ( ! CHECK_FLAG (peer->af_flags[AFI_IP6][SAFI_UNICAST],
+              PEER_FLAG_RSERVER_CLIENT))
+    {
+      vty_out (vty, "%% Neighbor is not a Route-Server client%s",
+            VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+
+  return bgp_show_route_in_table (vty, bgp, peer->rib[AFI_IP6][SAFI_UNICAST],
+                                  (argc == 3) ? argv[2] : argv[1],
+                                  AFI_IP6, SAFI_UNICAST, NULL, 1);
+}
+
+DEFUN (show_bgp_view_ipv6_rsclient_prefix,
+       show_bgp_view_ipv6_rsclient_prefix_cmd,
        "show bgp view WORD ipv6 rsclient (A.B.C.D|X:X::X:X) X:X::X:X/M",
        SHOW_STR
        BGP_STR
@@ -14770,8 +15071,17 @@ DEFUN (show_bgp_view_rsclient_prefix,
                                   AFI_IP6, SAFI_UNICAST, NULL, 1);
 }
 
-ALIAS (show_bgp_view_rsclient_prefix,
+ALIAS (show_bgp_view_ipv6_rsclient_prefix,
        show_bgp_rsclient_prefix_cmd,
+       "show bgp rsclient (A.B.C.D|X:X::X:X) X:X::X:X/M",
+       SHOW_STR
+       BGP_STR
+       "Information about Route Server Client\n"
+       NEIGHBOR_ADDR_STR
+       "IPv6 prefix <network>/<length>, e.g., 3ffe::/16\n")
+
+ALIAS (show_bgp_view_ipv6_rsclient_prefix,
+       show_bgp_ipv6_rsclient_prefix_cmd,
        "show bgp ipv6 rsclient (A.B.C.D|X:X::X:X) X:X::X:X/M",
        SHOW_STR
        BGP_STR
@@ -16178,14 +16488,14 @@ bgp_route_init (void)
   install_element (VIEW_NODE, &show_bgp_ipv6_prefix_list_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_filter_list_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_route_map_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_community_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_community2_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_community3_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_community4_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_community_exact_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_community2_exact_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_community3_exact_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_community4_exact_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_community_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_community2_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_community3_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_community4_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_community_exact_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_community2_exact_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_community3_exact_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_community4_exact_cmd);
   install_element (VIEW_NODE, &show_bgp_community_list_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_prefix_longer_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_neighbor_advertised_route_cmd);
@@ -16197,9 +16507,9 @@ bgp_route_init (void)
   install_element (VIEW_NODE, &show_bgp_ipv4_rsclient_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_rsclient_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_rsclient_cmd);
-  install_element (VIEW_NODE, &show_bgp_rsclient_route_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_rsclient_route_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_rsclient_route_cmd);
-  install_element (VIEW_NODE, &show_bgp_rsclient_prefix_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_rsclient_prefix_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_safi_rsclient_prefix_cmd);
   install_element (VIEW_NODE, &show_bgp_view_ipv6_cmd);
   install_element (VIEW_NODE, &show_bgp_view_ipv6_route_cmd);
@@ -16213,9 +16523,9 @@ bgp_route_init (void)
   install_element (VIEW_NODE, &show_bgp_view_ipv4_rsclient_cmd);
   install_element (VIEW_NODE, &show_bgp_view_ipv6_rsclient_cmd);
   install_element (VIEW_NODE, &show_bgp_view_ipv6_safi_rsclient_cmd);
-  install_element (VIEW_NODE, &show_bgp_view_rsclient_route_cmd);
+  install_element (VIEW_NODE, &show_bgp_view_ipv6_rsclient_route_cmd);
   install_element (VIEW_NODE, &show_bgp_view_ipv6_safi_rsclient_route_cmd);
-  install_element (VIEW_NODE, &show_bgp_view_rsclient_prefix_cmd);
+  install_element (VIEW_NODE, &show_bgp_view_ipv6_rsclient_prefix_cmd);
   install_element (VIEW_NODE, &show_bgp_view_ipv6_safi_rsclient_prefix_cmd);
   
   /* Restricted:
@@ -16225,24 +16535,24 @@ bgp_route_init (void)
   install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_route_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_ipv6_prefix_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_prefix_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community2_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community3_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community4_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community_exact_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community2_exact_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community3_exact_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community4_exact_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_rsclient_route_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_community_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_community2_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_community3_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_community4_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_community_exact_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_community2_exact_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_community3_exact_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_community4_exact_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_rsclient_route_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_rsclient_route_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_rsclient_prefix_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_rsclient_prefix_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_rsclient_prefix_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_view_ipv6_route_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_view_ipv6_prefix_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_view_ipv6_neighbor_received_prefix_filter_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_view_rsclient_route_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_view_ipv6_rsclient_route_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_view_ipv6_safi_rsclient_route_cmd);
-  install_element (RESTRICTED_NODE, &show_bgp_view_rsclient_prefix_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_view_ipv6_rsclient_prefix_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_view_ipv6_safi_rsclient_prefix_cmd);
 
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_cmd);
@@ -16254,16 +16564,16 @@ bgp_route_init (void)
   install_element (ENABLE_NODE, &show_bgp_ipv6_prefix_list_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_filter_list_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_route_map_cmd);
-  install_element (ENABLE_NODE, &show_bgp_ipv6_community_cmd);
-  install_element (ENABLE_NODE, &show_bgp_ipv6_community2_cmd);
-  install_element (ENABLE_NODE, &show_bgp_ipv6_community3_cmd);
-  install_element (ENABLE_NODE, &show_bgp_ipv6_community4_cmd);
-  install_element (ENABLE_NODE, &show_bgp_ipv6_community_exact_cmd);
-  install_element (ENABLE_NODE, &show_bgp_ipv6_community2_exact_cmd);
-  install_element (ENABLE_NODE, &show_bgp_ipv6_community3_exact_cmd);
-  install_element (ENABLE_NODE, &show_bgp_ipv6_community4_exact_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_community_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_community2_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_community3_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_community4_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_community_exact_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_community2_exact_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_community3_exact_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_community4_exact_cmd);
   install_element (ENABLE_NODE, &show_bgp_community_list_cmd);
-  install_element (ENABLE_NODE, &show_bgp_ipv6_community_list_exact_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_community_list_exact_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_prefix_longer_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_neighbor_advertised_route_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_neighbor_received_routes_cmd);
@@ -16274,9 +16584,9 @@ bgp_route_init (void)
   install_element (ENABLE_NODE, &show_bgp_ipv4_rsclient_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_rsclient_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_rsclient_cmd);
-  install_element (ENABLE_NODE, &show_bgp_rsclient_route_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_rsclient_route_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_rsclient_route_cmd);
-  install_element (ENABLE_NODE, &show_bgp_rsclient_prefix_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_rsclient_prefix_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_rsclient_prefix_cmd);
   install_element (ENABLE_NODE, &show_bgp_view_ipv6_cmd);
   install_element (ENABLE_NODE, &show_bgp_view_ipv6_route_cmd);
@@ -16290,9 +16600,9 @@ bgp_route_init (void)
   install_element (ENABLE_NODE, &show_bgp_view_ipv4_rsclient_cmd);
   install_element (ENABLE_NODE, &show_bgp_view_ipv6_rsclient_cmd);
   install_element (ENABLE_NODE, &show_bgp_view_ipv6_safi_rsclient_cmd);
-  install_element (ENABLE_NODE, &show_bgp_view_rsclient_route_cmd);
+  install_element (ENABLE_NODE, &show_bgp_view_ipv6_rsclient_route_cmd);
   install_element (ENABLE_NODE, &show_bgp_view_ipv6_safi_rsclient_route_cmd);
-  install_element (ENABLE_NODE, &show_bgp_view_rsclient_prefix_cmd);
+  install_element (ENABLE_NODE, &show_bgp_view_ipv6_rsclient_prefix_cmd);
   install_element (ENABLE_NODE, &show_bgp_view_ipv6_safi_rsclient_prefix_cmd);
   
   /* Statistics */
@@ -16588,9 +16898,9 @@ bgp_route_init (void)
   install_element (VIEW_NODE, &show_bgp_community2_exact_cmd);
   install_element (VIEW_NODE, &show_bgp_community3_exact_cmd);
   install_element (VIEW_NODE, &show_bgp_community4_exact_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_community_list_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_community_list_cmd);
   install_element (VIEW_NODE, &show_bgp_community_list_exact_cmd);
-  install_element (VIEW_NODE, &show_bgp_ipv6_community_list_exact_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_community_list_exact_cmd);
   install_element (VIEW_NODE, &show_bgp_prefix_longer_cmd);
   install_element (VIEW_NODE, &show_bgp_neighbor_advertised_route_cmd);
   install_element (VIEW_NODE, &show_bgp_neighbor_received_routes_cmd);
@@ -16640,7 +16950,7 @@ bgp_route_init (void)
   install_element (ENABLE_NODE, &show_bgp_community2_exact_cmd);
   install_element (ENABLE_NODE, &show_bgp_community3_exact_cmd);
   install_element (ENABLE_NODE, &show_bgp_community4_exact_cmd);
-  install_element (ENABLE_NODE, &show_bgp_ipv6_community_list_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_community_list_cmd);
   install_element (ENABLE_NODE, &show_bgp_community_list_exact_cmd);
   install_element (ENABLE_NODE, &show_bgp_prefix_longer_cmd);
   install_element (ENABLE_NODE, &show_bgp_neighbor_advertised_route_cmd);
@@ -16746,6 +17056,49 @@ bgp_route_init (void)
   install_element (ENABLE_NODE, &ipv6_bgp_neighbor_routes_cmd);
   install_element (VIEW_NODE, &ipv6_mbgp_neighbor_routes_cmd);
   install_element (ENABLE_NODE, &ipv6_mbgp_neighbor_routes_cmd);
+  /* old with name safi collision */
+  install_element (VIEW_NODE, &show_bgp_ipv6_community_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_community2_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_community3_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_community4_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_community_exact_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_community2_exact_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_community3_exact_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_community4_exact_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community2_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community3_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community4_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community_exact_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community2_exact_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community3_exact_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_community4_exact_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_community_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_community2_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_community3_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_community4_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_community_exact_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_community2_exact_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_community3_exact_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_community4_exact_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_community_list_exact_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_community_list_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_community_list_exact_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_community_list_cmd);
+
+  install_element (VIEW_NODE, &show_bgp_rsclient_route_cmd);
+  install_element (VIEW_NODE, &show_bgp_rsclient_prefix_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_rsclient_route_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_rsclient_prefix_cmd);
+  install_element (ENABLE_NODE, &show_bgp_rsclient_route_cmd);
+  install_element (ENABLE_NODE, &show_bgp_rsclient_prefix_cmd);
+
+  install_element (VIEW_NODE, &show_bgp_view_rsclient_route_cmd);
+  install_element (VIEW_NODE, &show_bgp_view_rsclient_prefix_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_view_rsclient_route_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_view_rsclient_prefix_cmd);
+  install_element (ENABLE_NODE, &show_bgp_view_rsclient_route_cmd);
+  install_element (ENABLE_NODE, &show_bgp_view_rsclient_prefix_cmd);
 }
 
 void
