@@ -3709,7 +3709,8 @@ bgp_static_update_main (struct bgp *bgp, struct prefix *p,
 	    bgp_info_restore(rn, ri);
 	  else
 	    bgp_aggregate_decrement (bgp, p, ri, afi, safi);
-	  bgp_attr_unintern (&ri->attr);
+
+          bgp_attr_unintern (&ri->attr);
 	  ri->attr = attr_new;
 	  ri->uptime = bgp_clock ();
 
@@ -4474,7 +4475,7 @@ DEFUN (bgp_network_mask_natural_backdoor,
 {
   int ret;
   char prefix_str[BUFSIZ];
-
+  
   ret = netmask_str2prefix_str (argv[0], NULL, prefix_str);
   if (! ret)
     {
