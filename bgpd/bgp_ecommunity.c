@@ -644,32 +644,31 @@ ecommunity_ecom2str (struct ecommunity *ecom, int format)
       /* High-order octet of type. */
       encode = *pnt++;
 
-      switch (encode)
-        {
-        case ECOMMUNITY_ENCODE_AS:
-        case ECOMMUNITY_ENCODE_IP:
-        case ECOMMUNITY_ENCODE_AS4:
-          break;
+      switch (encode) {
 
-        case ECOMMUNITY_ENCODE_OPAQUE:
-          if (*pnt == ECOMMUNITY_OPAQUE_SUBTYPE_ENCAP)
-            {
-              uint16_t tunneltype;
-              memcpy (&tunneltype, pnt + 5, 2);
-              tunneltype = ntohs(tunneltype);
-              len = sprintf (str_buf + str_pnt, "ET:%d", tunneltype);
-              str_pnt += len;
-              first = 0;
-              continue;
-            }
-            /* fall through */
+	case ECOMMUNITY_ENCODE_AS:
+	case ECOMMUNITY_ENCODE_IP:
+	case ECOMMUNITY_ENCODE_AS4:
+	    break;
 
-        default:
-          len = sprintf (str_buf + str_pnt, "?");
-          str_pnt += len;
-          first = 0;
-          continue;
-        }
+	case ECOMMUNITY_ENCODE_OPAQUE:
+	    if (*pnt == ECOMMUNITY_OPAQUE_SUBTYPE_ENCAP) {
+		uint16_t	tunneltype;
+		memcpy(&tunneltype, pnt+5, 2);
+		tunneltype = ntohs(tunneltype);
+		len = sprintf(str_buf + str_pnt, "ET:%d", tunneltype);
+		str_pnt += len;
+		first = 0;
+		continue;
+	    }
+	    /* fall through */
+
+	default:
+	    len = sprintf (str_buf + str_pnt, "?");
+	    str_pnt += len;
+	    first = 0;
+	    continue;
+      }
 
       /* Low-order octet of type. */
       type = *pnt++;

@@ -282,7 +282,6 @@ struct memory_list memory_list_vtysh[] =
   { MTYPE_VTYSH_CONFIG_LINE,	"Vtysh configuration line"	},
   { -1, NULL },
 };
-
 struct mlist mlists[] __attribute__ ((unused)) = {
   { memory_list_lib,	"LIB"	},
   { memory_list_zebra,	"ZEBRA"	},
