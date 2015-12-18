@@ -2602,6 +2602,88 @@ bgp_packet_mpattr_tea(
     }
 }
 
+/*
+ * Encodes the tunnel encapsulation attribute
+ */
+static void
+bgp_packet_mpattr_tea(
+    struct bgp		*bgp,
+    struct peer		*peer,
+    struct stream	*s,
+    struct attr		*attr,
+    uint8_t		attrtype)
+{
+    unsigned int			attrlenfield = 0;
+    struct bgp_attr_encap_subtlv	*subtlvs;
+    struct bgp_attr_encap_subtlv	*st;
+    const char				*attrname;
+
+    if (!attr || !attr->extra)
+	return;
+
+    switch (attrtype) {
+	case BGP_ATTR_ENCAP:
+	    attrname = "Tunnel Encap";
+	    subtlvs = attr->extra->encap_subtlvs;
+
+	    /*
+	     * The tunnel encap attr has an "outer" tlv.
+	     * T = tunneltype,
+	     * L = total length of subtlvs,
+	     * V = concatenated subtlvs.
+	     */
+	    attrlenfield = 2 + 2;	/* T + L */
+	    break;
+
+	default:
+	    assert(0);
+    }
+
+
+    /* compute attr length */
+    for (st = subtlvs; st; st = st->next) {
+	attrlenfield += (4 + st->length);
+    }
+
+    /* if no tlvs, don't make attr */
+    if (!attrlenfield)
+	return;
+
+    if (attrlenfield > 0xffff) {
+	zlog (peer->log, LOG_ERR, 
+	    "%s attribute is too long (length=%d), can't send it",
+	    attrname,
+	    attrlenfield);
+	return;
+    }
+
+    if (attrlenfield > 0xff) {
+	/* 2-octet length field */
+	stream_putc (s,
+	    BGP_ATTR_FLAG_TRANS|BGP_ATTR_FLAG_OPTIONAL|BGP_ATTR_FLAG_EXTLEN);
+	stream_putc (s, attrtype);
+	stream_putw (s, attrlenfield & 0xffff);
+    } else {
+	/* 1-octet length field */
+	stream_putc (s, BGP_ATTR_FLAG_TRANS|BGP_ATTR_FLAG_OPTIONAL);
+	stream_putc (s, attrtype);
+	stream_putc (s, attrlenfield & 0xff);
+    }
+
+    if (attrtype == BGP_ATTR_ENCAP) {
+	/* write outer T+L */
+	stream_putw(s, attr->extra->encap_tunneltype);
+	stream_putw(s, attrlenfield - 4);
+    }
+
+    /* write each sub-tlv */
+    for (st = subtlvs; st; st = st->next) {
+	stream_putw (s, st->type);
+	stream_putw (s, st->length);
+	stream_put (s, st->value, st->length);
+    }
+}
+
 void
 bgp_packet_mpattr_end (struct stream *s, size_t sizep)
 {
