@@ -5647,8 +5647,8 @@ bgp_terminate (void)
   for (ALL_LIST_ELEMENTS (bm->bgp, mnode, mnnode, bgp))
     for (ALL_LIST_ELEMENTS (bgp->peer, node, nnode, peer))
       if (peer->status == Established)
-          bgp_notify_send (peer, BGP_NOTIFY_CEASE,
-                           BGP_NOTIFY_CEASE_PEER_UNCONFIG);
+        bgp_notify_send (peer, BGP_NOTIFY_CEASE,
+                         BGP_NOTIFY_CEASE_PEER_UNCONFIG);
   
   bgp_cleanup_routes ();
   
