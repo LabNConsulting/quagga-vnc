@@ -3666,8 +3666,8 @@ bgp_check_local_routes_rsclient (struct peer *rsclient, afi_t afi, safi_t safi)
  * Used for SAFI_MPLS_VPN and SAFI_ENCAP
  */
 static void
-bgp_static_withdraw_safi (struct bgp *bgp, struct prefix *p, afi_t afi,
-                          safi_t safi, struct prefix_rd *prd, u_char *tag)
+bgp_static_withdraw_safi(struct bgp *bgp, struct prefix *p, afi_t afi,
+                         safi_t safi, struct prefix_rd *prd, u_char *tag)
 {
   struct bgp_node *rn;
   struct bgp_info *ri;
@@ -3694,15 +3694,19 @@ bgp_static_withdraw_safi (struct bgp *bgp, struct prefix *p, afi_t afi,
 }
 
 static void
-bgp_static_update_safi (struct bgp *bgp, struct prefix *p,
-                        struct bgp_static *bgp_static, afi_t afi, safi_t safi)
+bgp_static_update_safi(
+    struct bgp		*bgp,
+    struct prefix	*p,
+    struct bgp_static	*bgp_static,
+    afi_t		afi,
+    u_char		safi)	/* SAFI_MPLS_VPN, SAFI_ENCAP */
 {
   struct bgp_node	*rn;
   struct bgp_info	*new;
   struct attr		*attr_new;
   struct attr		attr = { 0 };
   struct bgp_info	*ri;
-
+  
   assert (bgp_static);
 
   rn = bgp_afi_node_get (bgp->rib[afi][safi], afi, safi, p, &bgp_static->prd);
@@ -3714,79 +3718,77 @@ bgp_static_update_safi (struct bgp *bgp, struct prefix *p,
   attr.flag |= ATTR_FLAG_BIT (BGP_ATTR_MULTI_EXIT_DISC);
 
   /* Apply route-map. */
-  if (bgp_static->rmap.name)
-    {
-      struct attr attr_tmp = attr;
-      struct bgp_info info;
-      int ret;
+  if (bgp_static->rmap.name) {
 
-      info.peer = bgp->peer_self;
-      info.attr = &attr_tmp;
+    struct attr attr_tmp = attr;
+    struct bgp_info info;
+    int ret;
 
-      SET_FLAG (bgp->peer_self->rmap_type, PEER_RMAP_TYPE_NETWORK);
+    info.peer = bgp->peer_self;
+    info.attr = &attr_tmp;
 
-      ret = route_map_apply (bgp_static->rmap.map, p, RMAP_BGP, &info);
+    SET_FLAG (bgp->peer_self->rmap_type, PEER_RMAP_TYPE_NETWORK);
 
-      bgp->peer_self->rmap_type = 0;
+    ret = route_map_apply (bgp_static->rmap.map, p, RMAP_BGP, &info);
 
-      if (ret == RMAP_DENYMATCH)
-        {
-          /* Free uninterned attribute. */
-          bgp_attr_flush (&attr_tmp);
+    bgp->peer_self->rmap_type = 0;
 
-          /* Unintern original. */
-          aspath_unintern (&attr.aspath);
-          bgp_attr_extra_free (&attr);
-          bgp_static_withdraw_safi (bgp, p, afi, safi, &bgp_static->prd,
-                                    bgp_static->tag);
-          return;
-        }
+    if (ret == RMAP_DENYMATCH)
+      {    
+	/* Free uninterned attribute. */
+	bgp_attr_flush (&attr_tmp);
 
-      attr_new = bgp_attr_intern (&attr_tmp);
-    }
-  else
-    {
-      attr_new = bgp_attr_intern (&attr);
-    }
+	/* Unintern original. */
+	aspath_unintern (&attr.aspath);
+	bgp_attr_extra_free (&attr);
+	bgp_static_withdraw_safi (bgp, p, afi, safi, &bgp_static->prd, bgp_static->tag);
+	return;
+      }
+    attr_new = bgp_attr_intern (&attr_tmp);
+
+  } else {
+
+    attr_new = bgp_attr_intern (&attr);
+  }
 
   for (ri = rn->info; ri; ri = ri->next)
     if (ri->peer == bgp->peer_self && ri->type == ZEBRA_ROUTE_BGP
-        && ri->sub_type == BGP_ROUTE_STATIC)
+	&& ri->sub_type == BGP_ROUTE_STATIC)
       break;
 
   if (ri)
     {
       if (attrhash_cmp (ri->attr, attr_new) &&
-          !CHECK_FLAG(ri->flags, BGP_INFO_REMOVED))
-        {
-          bgp_unlock_node (rn);
-          bgp_attr_unintern (&attr_new);
-          aspath_unintern (&attr.aspath);
-          bgp_attr_extra_free (&attr);
-          return;
-        }
+	  !CHECK_FLAG(ri->flags, BGP_INFO_REMOVED))
+	{
+	  bgp_unlock_node (rn);
+	  bgp_attr_unintern (&attr_new);
+	  aspath_unintern (&attr.aspath);
+	  bgp_attr_extra_free (&attr);
+	  return;
+	}
       else
-        {
-          /* The attribute is changed. */
-          bgp_info_set_flag (rn, ri, BGP_INFO_ATTR_CHANGED);
+	{
+	  /* The attribute is changed. */
+	  bgp_info_set_flag (rn, ri, BGP_INFO_ATTR_CHANGED);
 
-          /* Rewrite BGP route information. */
-          if (CHECK_FLAG(ri->flags, BGP_INFO_REMOVED))
-            bgp_info_restore(rn, ri);
-          else
-            bgp_aggregate_decrement (bgp, p, ri, afi, safi);
-          bgp_attr_unintern (&ri->attr);
-          ri->attr = attr_new;
-          ri->uptime = bgp_clock ();
+	  /* Rewrite BGP route information. */
+	  if (CHECK_FLAG(ri->flags, BGP_INFO_REMOVED))
+	    bgp_info_restore(rn, ri);
+	  else
+	    bgp_aggregate_decrement (bgp, p, ri, afi, safi);
+	  bgp_attr_unintern (&ri->attr);
+	  ri->attr = attr_new;
+	  ri->uptime = bgp_clock ();
 
-          /* Process change. */
-          bgp_aggregate_increment (bgp, p, ri, afi, safi);
-          bgp_process (bgp, rn, afi, safi);
-          bgp_unlock_node (rn);
-          aspath_unintern (&attr.aspath);
-          bgp_attr_extra_free (&attr);
-          return;
-        }
+	  /* Process change. */
+	  bgp_aggregate_increment (bgp, p, ri, afi, safi);
+	  bgp_process (bgp, rn, afi, safi);
+	  bgp_unlock_node (rn);
+	  aspath_unintern (&attr.aspath);
+	  bgp_attr_extra_free (&attr);
+	  return;
+	}
     }
 
 
@@ -3803,13 +3805,13 @@ bgp_static_update_safi (struct bgp *bgp, struct prefix *p,
 
   /* Aggregate address increment. */
   bgp_aggregate_increment (bgp, p, new, afi, safi);
-
+  
   /* Register new BGP information. */
   bgp_info_add (rn, new);
 
   /* route_node_get lock */
   bgp_unlock_node (rn);
-
+  
   /* Process change. */
   bgp_process (bgp, rn, afi, safi);
 
