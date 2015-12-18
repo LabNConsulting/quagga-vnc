@@ -161,27 +161,26 @@ bgp_nlri_parse_vpn(
       /* Decode RD type. */
       type = decode_rd_type (pnt + 3);
 
-      switch (type)
-        {
-        case RD_TYPE_AS:
-          decode_rd_as (pnt + 5, &rd_as);
-          break;
+      switch (type) {
+	case RD_TYPE_AS:
+	    decode_rd_as (pnt + 5, &rd_as);
+	    break;
 
-        case RD_TYPE_AS4:
-          decode_rd_as4 (pnt + 5, &rd_as);
-          break;
+	case RD_TYPE_AS4:
+	    decode_rd_as4 (pnt + 5, &rd_as);
+	    break;
 
-        case RD_TYPE_IP:
-          decode_rd_ip (pnt + 5, &rd_ip);
-          break;
+	case RD_TYPE_IP:
+	    decode_rd_ip (pnt + 5, &rd_ip);
+	    break;
 
-        case RD_TYPE_EOI:
-          break;
+	case RD_TYPE_EOI:
+	    break;
 
-        default:
-          zlog_err ("Invalid RD type %d", type);
-          return -1;
-        }
+	default:
+	  zlog_err ("Invalid RD type %d", type);
+	  return -1;
+      }
 
       p.prefixlen = prefixlen - 88;
       memcpy (&p.u.prefix, pnt + 11, psize - 11);
@@ -326,8 +325,14 @@ prefix_rd2str (struct prefix_rd *prd, char *buf, size_t size)
   else if (type == RD_TYPE_EOI)
     {
       snprintf(buf, size, "LHI:%d, %02x:%02x:%02x:%02x:%02x:%02x",
-               pnt[1], /* LHI */
-               pnt[2], pnt[3], pnt[4], pnt[5], pnt[6], pnt[7]); /* MAC */
+	    *(pnt+1),	/* LHI */
+	    *(pnt+2),	/* MAC[0] */
+	    *(pnt+3),
+	    *(pnt+4),
+	    *(pnt+5),
+	    *(pnt+6),
+	    *(pnt+7));
+
       return buf;
     }
 
@@ -436,8 +441,8 @@ show_adj_route_vpn (struct vty *vty, struct peer *peer, struct prefix_rd *prd)
                     /* Decode RD value. */
                     if (type == RD_TYPE_AS)
                       decode_rd_as (pnt + 2, &rd_as);
-                    else if (type == RD_TYPE_AS4)
-                      decode_rd_as4 (pnt + 2, &rd_as);
+		    else if (type == RD_TYPE_AS4)
+		      decode_rd_as4(pnt + 2, &rd_as);
                     else if (type == RD_TYPE_IP)
                       decode_rd_ip (pnt + 2, &rd_ip);
 
@@ -445,7 +450,7 @@ show_adj_route_vpn (struct vty *vty, struct peer *peer, struct prefix_rd *prd)
 
                     if (type == RD_TYPE_AS)
                       vty_out (vty, "%u:%d", rd_as.as, rd_as.val);
-                    else if (type == RD_TYPE_AS4)
+		    else if (type == RD_TYPE_AS4)
                       vty_out (vty, "%u:%d", rd_as.as, rd_as.val);
                     else if (type == RD_TYPE_IP)
                       vty_out (vty, "%s:%d", inet_ntoa (rd_ip.ip), rd_ip.val);

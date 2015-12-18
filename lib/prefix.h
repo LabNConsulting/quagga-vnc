@@ -47,7 +47,7 @@
  * own to simplify internal handling
  */
 struct ethaddr {
-  u_char octet[ETHER_ADDR_LEN];
+    u_char octet[ETHER_ADDR_LEN];
 } __packed;
 
 
@@ -77,16 +77,16 @@ struct prefix
   union 
   {
     u_char prefix;
-    struct in_addr prefix4;             /* AF_INET */
+    struct in_addr prefix4;		/* AF_INET */
 #ifdef HAVE_IPV6
-    struct in6_addr prefix6;            /* AF_INET6 */
+    struct in6_addr prefix6;		/* AF_INET6 */
 #endif /* HAVE_IPV6 */
     struct 
     {
       struct in_addr id;
       struct in_addr adv_router;
     } lp;
-    struct ethaddr prefix_eth;          /* AF_ETHERNET */
+    struct ethaddr prefix_eth;	/* AF_ETHERNET */
     u_char val[8];
     uintptr_t ptr;
   } u __attribute__ ((aligned (8)));
@@ -131,7 +131,7 @@ struct prefix_eth
 {
   u_char family;
   u_char prefixlen;
-  struct ethaddr eth_addr;      /* AF_ETHERNET */
+  struct ethaddr eth_addr;	/* AF_ETHERNET */
 };
 
 /* Prefix for a generic pointer */
