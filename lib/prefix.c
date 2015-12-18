@@ -230,17 +230,16 @@ family2afi (int family)
 const char *
 safi2str(safi_t safi)
 {
-  switch (safi)
-    {
+  switch (safi) {
     case SAFI_UNICAST:
-      return "unicast";
+	return "unicast";
     case SAFI_MULTICAST:
-      return "multicast";
+	return "multicast";
     case SAFI_ENCAP:
-      return "encap";
+	return "encap";
     case SAFI_MPLS_VPN:
-      return "vpn";
-    }
+	return "vpn";
+  }
   return NULL;
 }
 
@@ -324,9 +323,10 @@ prefix_same (const struct prefix *p1, const struct prefix *p2)
 	if (IPV6_ADDR_SAME (&p1->u.prefix6.s6_addr, &p2->u.prefix6.s6_addr))
 	  return 1;
 #endif /* HAVE_IPV6 */
-      if (p1->family == AF_ETHERNET)
-        if (!memcmp(p1->u.prefix_eth.octet, p2->u.prefix_eth.octet, ETHER_ADDR_LEN))
-            return 1;
+      if (p1->family == AF_ETHERNET) {
+	if (!memcmp(p1->u.prefix_eth.octet, p2->u.prefix_eth.octet, ETHER_ADDR_LEN))
+	    return 1;
+      }
     }
   return 0;
 }
@@ -809,21 +809,19 @@ prefix2str (union prefix46constptr pu, char *str, int size)
   const struct prefix *p = pu.p;
   char buf[BUFSIZ];
 
-  if (p->family == AF_ETHERNET)
-    {
-      int i;
-      char *s = str;
+  if (p->family == AF_ETHERNET) {
+    int		i;
+    char	*s = str;
 
-      assert(size > (3*ETHER_ADDR_LEN));
-      for (i = 0; i <= ETHER_ADDR_LEN; ++i)
-        {
-          sprintf(s, "%02x", p->u.prefix_eth.octet[i]);
-          if (i < (ETHER_ADDR_LEN - 1))
-            *(s+2) = ':';
-          s += 3;
-        }
-      return 0;
+    assert(size > (3*ETHER_ADDR_LEN));
+    for (i = 0; i <= ETHER_ADDR_LEN; ++i) {
+	sprintf(s, "%02x", p->u.prefix_eth.octet[i]);
+	if (i < (ETHER_ADDR_LEN - 1))
+	    *(s+2) = ':';
+	s += 3;
     }
+    return 0;
+  }
 
   inet_ntop (p->family, &p->u.prefix, buf, BUFSIZ);
   snprintf (str, size, "%s/%d", buf, p->prefixlen);

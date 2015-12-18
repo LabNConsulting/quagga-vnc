@@ -1289,7 +1289,7 @@ route_map_config_write (struct vty *vty)
 	write++;
       }
   if (!first)
-    vty_out (vty, " exit%s", VTY_NEWLINE);
+      vty_out (vty, " exit%s", VTY_NEWLINE);
   return write;
 }
 

@@ -2449,13 +2449,15 @@ cmd_complete_command_real (vector vline, struct vty *vty, int *status, int islib
 
 	for (j = 0; j < vector_active (match_vector); j++)
 	  if ((token = vector_slot (match_vector, j)))
-            {
-              string = cmd_entry_function (vector_slot (vline, index), token);
-              if (string && cmd_unique_string (matchvec, string))
-                vector_set (matchvec, (islib != 0 ?
-                                      XSTRDUP (MTYPE_TMP, string) :
-                                      strdup (string) /* rl freed */));
-            }
+		{
+		  if ((string = 
+		       cmd_entry_function (vector_slot (vline, index),
+					   token)))
+		    if (cmd_unique_string (matchvec, string))
+                        vector_set (matchvec, (islib != 0 ?
+                                               XSTRDUP (MTYPE_TMP, string) :
+                                               strdup (string) /* rl freed */));
+		}
       }
 
   /* We don't need cmd_vector any more. */
@@ -2510,15 +2512,14 @@ cmd_complete_command_real (vector vline, struct vty *vty, int *status, int islib
 
 	      /* Free matchvec. */
 	      for (i = 0; i < vector_active (matchvec); i++)
-                {
-                  if (vector_slot (matchvec, i))
-                    {
-                      if (islib != 0)
-                        XFREE (MTYPE_TMP, vector_slot (matchvec, i));
-                      else
-                        free (vector_slot (matchvec, i));
-                    }
-                }
+		{
+                  if (vector_slot (matchvec, i)) {
+                    if (islib != 0)
+                      XFREE (MTYPE_TMP, vector_slot (matchvec, i));
+                    else
+                      free (vector_slot (matchvec, i));
+                  }
+		}
 	      vector_free (matchvec);
 
 	      /* Make new matchvec. */
@@ -2575,9 +2576,8 @@ cmd_complete_command_lib (vector vline, struct vty *vty, int *status, int islib)
 char **
 cmd_complete_command (vector vline, struct vty *vty, int *status)
 {
-  return cmd_complete_command_lib (vline, vty, status, 0);
+    return cmd_complete_command_lib (vline, vty, status, 0);
 }
-
 /* return parent node */
 /* MUST eventually converge on CONFIG_NODE */
 enum node_type
@@ -4072,16 +4072,16 @@ DEFUN (show_commandtree,
   cmd_vector = vector_copy (cmd_node_vector (cmdvec, vty->node));
 
   /* loop over all commands at this node */
-  for (i = 0; i < vector_active(cmd_vector); ++i)
-    {
-      struct cmd_element *cmd_element;
+  for (i = 0; i < vector_active(cmd_vector); ++i) {
+    struct cmd_element *cmd_element;
 
-      /* A cmd_element (seems to be) is an individual command */
-      if ((cmd_element = vector_slot (cmd_vector, i)) == NULL)
-        continue;
+    /* A cmd_element (seems to be) is an individual command */
+    if ((cmd_element = vector_slot (cmd_vector, i)) == NULL)
+	continue;
 
-      vty_out (vty, "    %s%s", cmd_element->string, VTY_NEWLINE);
-    }
+
+    vty_out (vty, "    %s%s", cmd_element->string, VTY_NEWLINE);
+  }
 
   vector_free (cmd_vector);
   return CMD_SUCCESS;
