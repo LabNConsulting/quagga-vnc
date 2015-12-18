@@ -1042,11 +1042,11 @@ struct route_map_rule_cmd route_set_ip_nexthop_cmd =
 /* `set local-preference LOCAL_PREF' */
 
 struct local_pref_setting {
-  int type;
-#define LOCAL_PREF_TYPE_CONSTANT   0
-#define LOCAL_PREF_TYPE_FROM_MED   1
+    int		type;
+#define LOCAL_PREF_TYPE_CONSTANT			0
+#define LOCAL_PREF_TYPE_FROM_MED			1
 
-  uint32_t value;
+    uint32_t	value;
 };
 
 /* Set local preference. */
@@ -1054,6 +1054,7 @@ static route_map_result_t
 route_set_local_pref (void *rule, struct prefix *prefix,
 		      route_map_object_t type, void *object)
 {
+  //u_int32_t *local_pref;
   struct local_pref_setting *local_pref;
   struct bgp_info *bgp_info;
 
@@ -1062,23 +1063,22 @@ route_set_local_pref (void *rule, struct prefix *prefix,
       /* Fetch routemap's rule information. */
       local_pref = rule;
       bgp_info = object;
+    
+      switch (local_pref->type) {
+	case LOCAL_PREF_TYPE_CONSTANT:
+	  /* Set local preference value. */ 
+	  bgp_info->attr->flag |= ATTR_FLAG_BIT (BGP_ATTR_LOCAL_PREF);
+	  bgp_info->attr->local_pref = local_pref->value;
+	  break;
 
-      switch (local_pref->type)
-        {
-        case LOCAL_PREF_TYPE_CONSTANT:
-          /* Set local preference value. */
-          bgp_info->attr->flag |= ATTR_FLAG_BIT (BGP_ATTR_LOCAL_PREF);
-          bgp_info->attr->local_pref = local_pref->value;
-          break;
+	case LOCAL_PREF_TYPE_FROM_MED:
+	    if ((bgp_info->attr->flag & ATTR_FLAG_BIT (BGP_ATTR_MULTI_EXIT_DISC))) {
+	      bgp_info->attr->flag |= ATTR_FLAG_BIT (BGP_ATTR_LOCAL_PREF);
+	      bgp_info->attr->local_pref = 0xffffffff - bgp_info->attr->med;
+	    }
+	    break;
+      }
 
-        case LOCAL_PREF_TYPE_FROM_MED:
-          if ((bgp_info->attr->flag & ATTR_FLAG_BIT (BGP_ATTR_MULTI_EXIT_DISC)))
-            {
-              bgp_info->attr->flag |= ATTR_FLAG_BIT (BGP_ATTR_LOCAL_PREF);
-              bgp_info->attr->local_pref = 0xffffffff - bgp_info->attr->med;
-            }
-          break;
-        }
     }
 
   return RMAP_OKAY;
@@ -1093,34 +1093,32 @@ route_set_local_pref_compile (const char *arg)
   int type = 0;
   char *endptr = NULL;
 
-  if (!strcmp(arg, "from-med"))
-    {
-      type = LOCAL_PREF_TYPE_FROM_MED;
-    }
-  else
-    {
-      /* Local preference value shoud be integer. */
-      if (! all_digit (arg))
-        return NULL;
+  if (!strcmp(arg, "from-med")) {
+    type = LOCAL_PREF_TYPE_FROM_MED;
+  } else {
 
-      errno = 0;
-      tmp = strtoul (arg, &endptr, 10);
-      if (*endptr != '\0' || errno || tmp > UINT32_MAX)
-        return NULL;
+    /* Local preference value shoud be integer. */
+    if (! all_digit (arg))
+      return NULL;
+  
+    errno = 0;
+    tmp = strtoul (arg, &endptr, 10);
+    if (*endptr != '\0' || errno || tmp > UINT32_MAX)
+      return NULL;
 
-      type = LOCAL_PREF_TYPE_CONSTANT;
-    }
-
+    type = LOCAL_PREF_TYPE_CONSTANT;
+  }
+   
   local_pref = XMALLOC (MTYPE_ROUTE_MAP_COMPILED,
-                        sizeof (struct local_pref_setting));
-
+    sizeof (struct local_pref_setting)); 
+  
   if (!local_pref)
     return local_pref;
-
+  
   local_pref->type = type;
   if (type == LOCAL_PREF_TYPE_CONSTANT)
       local_pref->value = tmp;
-
+  
   return local_pref;
 }
 
