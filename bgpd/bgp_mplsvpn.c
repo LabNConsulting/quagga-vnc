@@ -574,7 +574,7 @@ bgp_show_mpls_vpn(
 	        if (tags)
 		  route_vty_out_tag (vty, &rm->p, ri, 0, SAFI_MPLS_VPN);
 	        else
-		  route_vty_out (vty, &rm->p, ri, 0, SAFI_MPLS_VPN);
+                    route_vty_out (vty, &rm->p, ri, 0, SAFI_MPLS_VPN, 0);
 	      }
         }
     }
