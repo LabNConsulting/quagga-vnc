@@ -7336,7 +7336,7 @@ bgp_show_summary (struct vty *vty, struct bgp *bgp, int afi, int safi)
 	      if (CHECK_FLAG (peer->flags, PEER_FLAG_SHUTDOWN))
 		vty_out (vty, " Idle (Admin)");
 	      else if (CHECK_FLAG (peer->sflags, PEER_STATUS_PREFIX_OVERFLOW))
-		vty_out (vty, " Idle (PfxCt)");
+		vty_out (vty, " Idle (PfxUn)");
 	      else
 		vty_out (vty, " %-11s", LOOKUP(bgp_status_msg, peer->status));
 	    }
@@ -8977,7 +8977,7 @@ bgp_write_rsclient_summary (struct vty *vty, struct peer *rsclient,
   if (CHECK_FLAG (rsclient->flags, PEER_FLAG_SHUTDOWN))
     vty_out (vty, " Idle (Admin)");
   else if (CHECK_FLAG (rsclient->sflags, PEER_STATUS_PREFIX_OVERFLOW))
-    vty_out (vty, " Idle (PfxCt)");
+    vty_out (vty, " Idle (PfxUn)");
   else
     vty_out (vty, " %-11s", LOOKUP(bgp_status_msg, rsclient->status));
 
