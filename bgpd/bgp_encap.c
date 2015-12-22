@@ -1,4 +1,3 @@
-
 /*
  * This file created by LabN Consulting, L.L.C.
  *
@@ -483,7 +482,7 @@ bgp_show_encap (
 	        if (tags)
 		  route_vty_out_tag (vty, &rm->p, ri, 0, SAFI_ENCAP);
 	        else
-		  route_vty_out (vty, &rm->p, ri, 0, SAFI_ENCAP, 0);
+		  route_vty_out (vty, &rm->p, ri, 0, SAFI_ENCAP);
                 output_count++;
 	      }
         }
