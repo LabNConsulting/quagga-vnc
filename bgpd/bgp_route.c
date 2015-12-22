@@ -9938,6 +9938,15 @@ DEFUN (show_bgp_statistics,
   return bgp_table_stats_vty (vty, NULL, argv[0], argv[1]);
 }
 
+ALIAS (show_bgp_statistics,
+       show_bgp_statistics_vpnv4_cmd,
+       "show bgp (ipv4) (vpnv4) statistics",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Address Family modifier\n"
+       "BGP RIB advertisement statistics\n")
+
 DEFUN (show_bgp_statistics_view,
        show_bgp_statistics_view_cmd,
        "show bgp view WORD (ipv4|ipv6) (encap|multicast|unicast|vpn) statistics",
@@ -9955,17 +9964,15 @@ DEFUN (show_bgp_statistics_view,
   return bgp_table_stats_vty (vty, NULL, argv[0], argv[1]);
 }
 
-#if 0 /* added as options to above command */
 ALIAS (show_bgp_statistics_view,
-       show_bgp_statistics_view_encap_cmd,
-       "show bgp view WORD (ipv4) (encap) statistics",
+       show_bgp_statistics_view_vpnv4_cmd,
+       "show bgp view WORD (ipv4) (vpnv4) statistics",
        SHOW_STR
        BGP_STR
        "BGP view\n"
        "Address family\n"
        "Address Family modifier\n"
        "BGP RIB advertisement statistics\n")
-#endif
 
 enum bgp_pcounts
 {
