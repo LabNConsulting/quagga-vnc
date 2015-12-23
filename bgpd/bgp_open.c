@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* BGP open message handling
    Copyright (C) 1998, 1999 Kunihiro Ishiguro
 

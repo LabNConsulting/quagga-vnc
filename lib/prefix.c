@@ -1,9 +1,4 @@
 /*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
-/*
  * Prefix related functions.
  * Copyright (C) 1997, 98, 99 Kunihiro Ishiguro
  *

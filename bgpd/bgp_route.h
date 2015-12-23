@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* BGP routing information base
    Copyright (C) 1996, 97, 98, 2000 Kunihiro Ishiguro
 

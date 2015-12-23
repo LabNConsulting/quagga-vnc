@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* BGP attributes. 
    Copyright (C) 1996, 97, 98 Kunihiro Ishiguro
 

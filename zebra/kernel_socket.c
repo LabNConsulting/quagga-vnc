@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* Kernel communication using routing socket.
  * Copyright (C) 1999 Kunihiro Ishiguro
  *

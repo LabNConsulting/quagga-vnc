@@ -1,9 +1,4 @@
 /*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
-/*
  * Zebra debug related function
  * Copyright (C) 1999 Kunihiro Ishiguro
  *

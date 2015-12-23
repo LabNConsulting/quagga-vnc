@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* MPLS-VPN
    Copyright (C) 2000 Kunihiro Ishiguro <kunihiro@zebra.org>
 

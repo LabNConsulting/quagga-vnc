@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* Route map function of bgpd.
    Copyright (C) 1998, 1999 Kunihiro Ishiguro
 

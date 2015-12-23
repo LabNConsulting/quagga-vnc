@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* Redistribution Handler
  * Copyright (C) 1998 Kunihiro Ishiguro
  *

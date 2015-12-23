@@ -1,9 +1,4 @@
 /*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
-/*
  * Prefix structure.
  * Copyright (C) 1998 Kunihiro Ishiguro
  *

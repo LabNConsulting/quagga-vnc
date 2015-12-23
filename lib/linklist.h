@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* Generic linked list
  * Copyright (C) 1997, 2000 Kunihiro Ishiguro
  *

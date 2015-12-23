@@ -1,7 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
 /* 
  * Copyright (C) 2005 Sun Microsystems, Inc.
  *

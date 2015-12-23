@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* BGP packet management routine.
    Copyright (C) 1999 Kunihiro Ishiguro
 

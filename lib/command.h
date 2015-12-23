@@ -1,9 +1,4 @@
 /*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
-/*
  * Zebra configuration command interface routine
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
  *

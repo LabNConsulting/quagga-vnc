@@ -1,8 +1,3 @@
-/*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
 /* BGP Extended Communities Attribute
    Copyright (C) 2000 Kunihiro Ishiguro <kunihiro@zebra.org>
 

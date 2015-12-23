@@ -1,9 +1,4 @@
 /*
- * This file has been modified by LabN Consulting, L.L.C.
- *
- */
-
-/*
  * Memory type definitions. This file is parsed by memtypes.awk to extract
  * MTYPE_ and memory_list_.. information in order to autogenerate 
  * memtypes.h.
