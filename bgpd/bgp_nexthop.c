@@ -1470,7 +1470,6 @@ bgp_scan_finish (void)
   if (bgp_connected_table[AFI_IP6])
     bgp_table_unlock (bgp_connected_table[AFI_IP6]);
   bgp_connected_table[AFI_IP6] = NULL;
-#endif /* HAVE_IPV6 */
 }
 
 void
