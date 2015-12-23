@@ -16699,7 +16699,6 @@ bgp_route_init (void)
   install_element (ENABLE_NODE, &show_ip_bgp_damp_flap_filter_list_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_flap_prefix_list_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_damp_flap_prefix_list_cmd);
-  install_element (ENABLE_NODE, &show_ip_bgp_damp_flap_prefix_list_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_flap_prefix_longer_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_damp_flap_prefix_longer_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_flap_route_map_cmd);
