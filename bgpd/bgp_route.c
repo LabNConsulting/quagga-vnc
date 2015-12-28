@@ -9072,7 +9072,7 @@ DEFUN (show_bgp_ipv6_route_map,
 			     bgp_show_type_route_map);
 }
 #endif
-
+
 DEFUN (show_bgp_ipv4_cidr_only,
        show_bgp_ipv4_cidr_only_cmd,
        "show bgp ipv4 cidr-only",
@@ -15554,7 +15554,7 @@ ALIAS (show_bgp_ipv6_safi_flap_statistics,
        "Display detailed information about dampening\n"
        "Display flap statistics of routes\n")
 #endif
-
+
 /* Display specified route of BGP table. */
 static int
 bgp_clear_damp_route (struct vty *vty, const char *view_name, 
