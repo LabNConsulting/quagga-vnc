@@ -3084,8 +3084,7 @@ bgp_drain_workqueue_immediate (struct work_queue *wq)
       return;
     }
 
-  while (wq->items->count)
-    work_queue_run(wq->thread);
+  THREAD_OFF(wq->thread);
 }
 
 /*
