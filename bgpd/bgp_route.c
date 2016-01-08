@@ -3084,7 +3084,14 @@ bgp_drain_workqueue_immediate (struct work_queue *wq)
       return;
     }
 
-  THREAD_OFF(wq->thread);
+   fprintf(stderr, "%s: draining \"%s\"\n",
+    __func__, wq->name);
+   while (wq->items->count) 
+     {
+       if (wq->thread) 
+         thread_cancel(wq->thread);
+       work_queue_run(wq->thread);
+     }
 }
 
 /*
