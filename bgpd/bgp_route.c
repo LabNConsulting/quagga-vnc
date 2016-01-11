@@ -5927,8 +5927,7 @@ route_vty_out(
     struct prefix *p,
     struct bgp_info *binfo,
     int display,
-    safi_t safi,
-    int machineparse)
+    safi_t safi)
 {
   struct attr *attr;
   
@@ -5936,7 +5935,7 @@ route_vty_out(
   route_vty_short_status_out (vty, binfo);
   
   /* print prefix and mask */
-  if (!display || machineparse)
+  if (!display)
     route_vty_out_route (p, vty);
   else
     vty_out (vty, "%*s", 17, " ");
@@ -6014,17 +6013,11 @@ route_vty_out(
       if (attr->flag & ATTR_FLAG_BIT (BGP_ATTR_MULTI_EXIT_DISC))
 	vty_out (vty, "%10u ", attr->med);
       else
-	if (machineparse)
-	  vty_out (vty, "-         ");
-	else
 	  vty_out (vty, "          ");
 
       if (attr->flag & ATTR_FLAG_BIT (BGP_ATTR_LOCAL_PREF))
 	vty_out (vty, "%7u ", attr->local_pref);
       else
-	if (machineparse)
-	  vty_out (vty, "-      ");
-	else
 	  vty_out (vty, "       ");
 
       vty_out (vty, "%7u ", (attr->extra ? attr->extra->weight : 0));
@@ -6032,9 +6025,6 @@ route_vty_out(
       /* Print aspath */
       if (attr->aspath)
         aspath_print_vty (vty, "%s", attr->aspath, " ");
-      else
-	if (machineparse)
-          vty_out (vty, "-");
 
       /* Print origin */
       vty_out (vty, "%s", bgp_origin_str[attr->origin]);
@@ -6501,13 +6491,10 @@ bgp_show_table (struct vty *vty, struct bgp_table *table, struct in_addr *router
   int display;
   unsigned long output_count;
   unsigned long total_count;
-  int machineparse = 0;
 
   /* This is first entry point, so reset total line. */
   output_count = 0;
   total_count  = 0;
-  if (type == bgp_show_type_normal && output_arg == (void *)1)
-    machineparse = 1;
 
   /* Start processing of routes. */
   for (rn = bgp_table_top (table); rn; rn = bgp_route_next (rn)) 
@@ -6701,7 +6688,7 @@ bgp_show_table (struct vty *vty, struct bgp_table *table, struct in_addr *router
 		     || type == bgp_show_type_flap_neighbor)
 	      flap_route_vty_out (vty, &rn->p, ri, display, SAFI_UNICAST);
 	    else
-	      route_vty_out (vty, &rn->p, ri, display, SAFI_UNICAST, machineparse);
+	      route_vty_out (vty, &rn->p, ri, display, SAFI_UNICAST);
 	    display++;
 	  }
 	if (display)
