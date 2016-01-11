@@ -769,8 +769,7 @@ bgp_attr_aggregate_intern (struct bgp *bgp, u_char origin,
   attre.aggregator_addr = bgp->router_id;
 
   new = bgp_attr_intern (&attr);
-  bgp_attr_extra_free (&attr);
-  
+
   aspath_unintern (&new->aspath);
   return new;
 }
