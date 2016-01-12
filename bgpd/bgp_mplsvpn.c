@@ -163,8 +163,8 @@ bgp_nlri_parse_vpn (afi_t afi, struct peer *peer, struct attr *attr,
           break;
 
 	default:
-	  zlog_err ("Invalid RD type %d", type);
-	  return -1;
+	  zlog_err ("Unknown RD type %d", type);
+          break;  /* just report */
       }
 
       p.prefixlen = prefixlen - 88;
