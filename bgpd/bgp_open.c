@@ -130,9 +130,7 @@ bgp_afi_safi_valid_indices (afi_t afi, safi_t *safi)
   switch (afi)
     {
       case AFI_IP:
-#ifdef HAVE_IPV6
       case AFI_IP6:
-#endif
         switch (*safi)
           {
             /* BGP MPLS-labeled VPN SAFI isn't contigious with others, remap */
@@ -972,7 +970,6 @@ bgp_open_capability (struct stream *s, struct peer *peer)
       stream_putc (s, 0);
       stream_putc (s, SAFI_ENCAP);
     }
-#ifdef HAVE_IPV6
   /* IPv6 unicast. */
   if (peer->afc[AFI_IP6][SAFI_UNICAST])
     {
@@ -1021,7 +1018,6 @@ bgp_open_capability (struct stream *s, struct peer *peer)
       stream_putc (s, 0);
       stream_putc (s, SAFI_ENCAP);
     }
-#endif /* HAVE_IPV6 */
 
   /* Route refresh. */
   SET_FLAG (peer->cap, PEER_CAP_REFRESH_ADV);
