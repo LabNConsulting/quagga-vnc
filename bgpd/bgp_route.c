@@ -847,10 +847,8 @@ bgp_announce_check (struct bgp_info *ri, struct peer *peer, struct prefix *p,
     {
       if (p->family == AF_INET && p->u.prefix4.s_addr == INADDR_ANY)
 	return 0;
-#ifdef HAVE_IPV6
       else if (p->family == AF_INET6 && p->prefixlen == 0)
 	return 0;
-#endif /* HAVE_IPV6 */
     }
 
   /* Transparency check. */
@@ -994,31 +992,25 @@ bgp_announce_check (struct bgp_info *ri, struct peer *peer, struct prefix *p,
     (safi != SAFI_ENCAP && p->family == AF_INET) || \
     (safi == SAFI_ENCAP && attr->extra->mp_nexthop_len == 4))
 
-#ifdef HAVE_IPV6
 #define NEXTHOP_IS_V6 (\
     (safi != SAFI_ENCAP && p->family == AF_INET6) || \
     (safi == SAFI_ENCAP && attr->extra->mp_nexthop_len == 16))
-#endif
 
   /* next-hop-set */
   if (transparent
       || (reflect && ! CHECK_FLAG (peer->af_flags[afi][safi], PEER_FLAG_NEXTHOP_SELF_ALL))
       || (CHECK_FLAG (peer->af_flags[afi][safi], PEER_FLAG_NEXTHOP_UNCHANGED)
 	  && ((NEXTHOP_IS_V4 && attr->nexthop.s_addr)
-#ifdef HAVE_IPV6
 	      || (NEXTHOP_IS_V6 && 
                   ! IN6_IS_ADDR_UNSPECIFIED(&attr->extra->mp_nexthop_global))
-#endif /* HAVE_IPV6 */
 	      )))
     {
       /* NEXT-HOP Unchanged. */
     }
   else if (CHECK_FLAG (peer->af_flags[afi][safi], PEER_FLAG_NEXTHOP_SELF)
 	   || (NEXTHOP_IS_V4 && attr->nexthop.s_addr == 0)
-#ifdef HAVE_IPV6
 	   || (NEXTHOP_IS_V6 && 
                IN6_IS_ADDR_UNSPECIFIED(&attr->extra->mp_nexthop_global))
-#endif /* HAVE_IPV6 */
 	   || (peer->sort == BGP_PEER_EBGP
 	       && bgp_multiaccess_check_v4 (attr->nexthop, peer->host) == 0))
     {
@@ -1031,7 +1023,6 @@ bgp_announce_check (struct bgp_info *ri, struct peer *peer, struct prefix *p,
 	  else
 	    memcpy (&attr->nexthop, &peer->nexthop.v4, IPV4_MAX_BYTELEN);
 	}
-#ifdef HAVE_IPV6
       /* Set IPv6 nexthop. */
       if (NEXTHOP_IS_V6)
 	{
@@ -1040,10 +1031,8 @@ bgp_announce_check (struct bgp_info *ri, struct peer *peer, struct prefix *p,
 		  IPV6_MAX_BYTELEN);
 	  attr->extra->mp_nexthop_len = 16;
 	}
-#endif /* HAVE_IPV6 */
     }
 
-#ifdef HAVE_IPV6
   if (p->family == AF_INET6 && safi != SAFI_ENCAP)
     {
       /* Left nexthop_local unchanged if so configured. */ 
@@ -1082,7 +1071,6 @@ bgp_announce_check (struct bgp_info *ri, struct peer *peer, struct prefix *p,
     }
 
     }
-#endif /* HAVE_IPV6 */
 
   /* If this is EBGP peer and remove-private-AS is set.  */
   if (peer->sort == BGP_PEER_EBGP
@@ -1163,10 +1151,8 @@ bgp_announce_check_rsclient (struct bgp_info *ri, struct peer *rsclient,
     {
       if (p->family == AF_INET && p->u.prefix4.s_addr == INADDR_ANY)
         return 0;
-#ifdef HAVE_IPV6
       else if (p->family == AF_INET6 && p->prefixlen == 0)
         return 0;
-#endif /* HAVE_IPV6 */
     }
 
   /* If the attribute has originator-id and it is same as remote
@@ -1225,10 +1211,8 @@ bgp_announce_check_rsclient (struct bgp_info *ri, struct peer *rsclient,
 
   /* next-hop-set */
   if ((p->family == AF_INET && attr->nexthop.s_addr == 0)
-#ifdef HAVE_IPV6
           || (p->family == AF_INET6 &&
               IN6_IS_ADDR_UNSPECIFIED(&attr->extra->mp_nexthop_global))
-#endif /* HAVE_IPV6 */
      )
   {
     /* Set IPv4 nexthop. */
@@ -1240,7 +1224,6 @@ bgp_announce_check_rsclient (struct bgp_info *ri, struct peer *rsclient,
         else
           memcpy (&attr->nexthop, &rsclient->nexthop.v4, IPV4_MAX_BYTELEN);
       }
-#ifdef HAVE_IPV6
     /* Set IPv6 nexthop. */
     if (p->family == AF_INET6)
       {
@@ -1249,10 +1232,8 @@ bgp_announce_check_rsclient (struct bgp_info *ri, struct peer *rsclient,
                 IPV6_MAX_BYTELEN);
         attr->extra->mp_nexthop_len = 16;
       }
-#endif /* HAVE_IPV6 */
   }
 
-#ifdef HAVE_IPV6
   if (p->family == AF_INET6)
     {
       struct attr_extra *attre = attr->extra;
@@ -1294,8 +1275,6 @@ bgp_announce_check_rsclient (struct bgp_info *ri, struct peer *rsclient,
         }
 
     }
-#endif /* HAVE_IPV6 */
-
 
   /* If this is EBGP peer and remove-private-AS is set.  */
   if (rsclient->sort == BGP_PEER_EBGP
@@ -2565,7 +2544,6 @@ bgp_default_originate (struct peer *peer, afi_t afi, safi_t safi, int withdraw)
 
   if (afi == AFI_IP)
     str2prefix ("0.0.0.0/0", &p);
-#ifdef HAVE_IPV6
   else if (afi == AFI_IP6)
     {
       struct attr_extra *ae = attr.extra;
@@ -2587,7 +2565,6 @@ bgp_default_originate (struct peer *peer, afi_t afi, safi_t safi, int withdraw)
 	  ae->mp_nexthop_len = 32;
 	}
     }
-#endif /* HAVE_IPV6 */
 
   if (peer->default_rmap[afi][safi].name)
     {
@@ -3289,7 +3266,6 @@ bgp_nlri_parse (struct peer *peer, struct attr *attr, struct bgp_nlri *packet)
 	    }
 	}
 
-#ifdef HAVE_IPV6
       /* Check address. */
       if (packet->afi == AFI_IP6 && packet->safi == SAFI_UNICAST)
 	{
@@ -3304,7 +3280,6 @@ bgp_nlri_parse (struct peer *peer, struct attr *attr, struct bgp_nlri *packet)
 	      continue;
 	    }
 	}
-#endif /* HAVE_IPV6 */
 
       /* Normal process. */
       if (attr)
@@ -3958,14 +3933,12 @@ bgp_static_set (struct vty *vty, struct bgp *bgp, const char *ip_str,
       vty_out (vty, "%% Malformed prefix%s", VTY_NEWLINE);
       return CMD_WARNING;
     }
-#ifdef HAVE_IPV6
   if (afi == AFI_IP6 && IN6_IS_ADDR_LINKLOCAL (&p.u.prefix6))
     {
       vty_out (vty, "%% Malformed prefix (link-local address)%s",
 	       VTY_NEWLINE);
       return CMD_WARNING;
     }
-#endif /* HAVE_IPV6 */
 
   apply_mask (&p);
 
@@ -4051,14 +4024,12 @@ bgp_static_unset (struct vty *vty, struct bgp *bgp, const char *ip_str,
       vty_out (vty, "%% Malformed prefix%s", VTY_NEWLINE);
       return CMD_WARNING;
     }
-#ifdef HAVE_IPV6
   if (afi == AFI_IP6 && IN6_IS_ADDR_LINKLOCAL (&p.u.prefix6))
     {
       vty_out (vty, "%% Malformed prefix (link-local address)%s",
 	       VTY_NEWLINE);
       return CMD_WARNING;
     }
-#endif /* HAVE_IPV6 */
 
   apply_mask (&p);
 
@@ -4556,7 +4527,6 @@ ALIAS (no_bgp_network_mask_natural,
        "Network number\n"
        "Specify a BGP backdoor route\n")
 
-#ifdef HAVE_IPV6
 DEFUN (ipv6_bgp_network,
        ipv6_bgp_network_cmd,
        "network X:X::X:X/M",
@@ -4614,7 +4584,6 @@ ALIAS (no_ipv6_bgp_network,
        BGP_STR
        "Specify a network to announce via BGP\n"
        "IPv6 prefix <network>/<length>, e.g., 3ffe::/16\n")
-#endif /* HAVE_IPV6 */
 
 /* stubs for removed AS-Pathlimit commands, kept for config compatibility */
 ALIAS_DEPRECATED (bgp_network,
@@ -4721,7 +4690,6 @@ ALIAS_DEPRECATED (no_bgp_network_mask_natural,
        "Specify a BGP backdoor route\n"
        "AS-Path hopcount limit attribute\n"
        "AS-Pathlimit TTL, in number of AS-Path hops\n")
-#ifdef HAVE_IPV6
 ALIAS_DEPRECATED (ipv6_bgp_network,
        ipv6_bgp_network_ttl_cmd,
        "network X:X::X:X/M pathlimit <0-255>",
@@ -4737,7 +4705,6 @@ ALIAS_DEPRECATED (no_ipv6_bgp_network,
        "IPv6 prefix <network>/<length>\n"
        "AS-Path hopcount limit attribute\n"
        "AS-Pathlimit TTL, in number of AS-Path hops\n")
-#endif /* HAVE_IPV6 */
 
 /* Aggreagete address:
 
@@ -5565,7 +5532,6 @@ ALIAS (no_aggregate_address_mask,
        "Filter more specific routes from updates\n"
        "Generate AS set path information\n")
 
-#ifdef HAVE_IPV6
 DEFUN (ipv6_aggregate_address,
        ipv6_aggregate_address_cmd,
        "aggregate-address X:X::X:X/M",
@@ -5642,7 +5608,6 @@ ALIAS (no_ipv6_aggregate_address_summary_only,
        "Configure BGP aggregate entries\n"
        "Aggregate prefix\n"
        "Filter more specific routes from updates\n")
-#endif /* HAVE_IPV6 */
 
 /* Redistribute route treatment. */
 void
@@ -5666,14 +5631,12 @@ bgp_redistribute_add (struct prefix *p, const struct in_addr *nexthop,
   if (nexthop)
     attr.nexthop = *nexthop;
 
-#ifdef HAVE_IPV6
   if (nexthop6)
     {
       struct attr_extra *extra = bgp_attr_extra_get(&attr);
       extra->mp_nexthop_global = *nexthop6;
       extra->mp_nexthop_len = 16;
     }
-#endif
 
   attr.med = metric;
   attr.flag |= ATTR_FLAG_BIT (BGP_ATTR_MULTI_EXIT_DISC);
@@ -5962,13 +5925,10 @@ route_vty_out(
 		    vty_out (vty, "%s", inet_ntop(af,
 			&attr->extra->mp_nexthop_global_in, buf, BUFSIZ));
 		    break;
-#if HAVE_IPV6
 		case AF_INET6:
 		    vty_out (vty, "%s", inet_ntop(af,
 			&attr->extra->mp_nexthop_global, buf, BUFSIZ));
 		    break;
-#endif
-
 		default:
 		    vty_out(vty, "?");
 	    }
@@ -5981,7 +5941,6 @@ route_vty_out(
 	    {
 		vty_out (vty, "%-16s", inet_ntoa (attr->nexthop));
 	    }
-#ifdef HAVE_IPV6      
 	  else if (p->family == AF_INET6)
 	    {
 	      int len;
@@ -5996,7 +5955,6 @@ route_vty_out(
 	      else
 		vty_out (vty, "%*s", len, " ");
 	    }
-#endif /* HAVE_IPV6 */
          else
 	   {
 	     vty_out(vty, "?");
@@ -6054,7 +6012,6 @@ route_vty_out_tmp (struct vty *vty, struct prefix *p,
 	  else
 	    vty_out (vty, "%-16s", inet_ntoa (attr->nexthop));
 	}
-#ifdef HAVE_IPV6
       else if (p->family == AF_INET6)
         {
           int len;
@@ -6071,7 +6028,6 @@ route_vty_out_tmp (struct vty *vty, struct prefix *p,
           else
             vty_out (vty, "%*s", len, " ");
         }
-#endif /* HAVE_IPV6 */
 
       if (attr->flag & ATTR_FLAG_BIT (BGP_ATTR_MULTI_EXIT_DISC))
 	vty_out (vty, "%10u ", attr->med);
@@ -6127,7 +6083,6 @@ route_vty_out_tag (struct vty *vty, struct prefix *p,
 	  else
 	    vty_out (vty, "%-16s", inet_ntoa (attr->nexthop));
 	}
-#ifdef HAVE_IPV6      
       else if (p->family == AF_INET6)
 	{
 	  assert (attr->extra);
@@ -6145,7 +6100,6 @@ route_vty_out_tag (struct vty *vty, struct prefix *p,
 		                buf1, BUFSIZ));
 	  
 	}
-#endif /* HAVE_IPV6 */
     }
 
   label = decode_label (binfo->extra->tag);
@@ -6308,7 +6262,6 @@ route_vty_out_detail (struct vty *vty, struct bgp *bgp, struct prefix *p,
 		   inet_ntoa (attr->extra->mp_nexthop_global_in) :
 		   inet_ntoa (attr->nexthop));
 	}
-#ifdef HAVE_IPV6
       else
 	{
 	  assert (attr->extra);
@@ -6316,7 +6269,6 @@ route_vty_out_detail (struct vty *vty, struct bgp *bgp, struct prefix *p,
 		   inet_ntop (AF_INET6, &attr->extra->mp_nexthop_global,
 			      buf, INET6_ADDRSTRLEN));
 	}
-#endif /* HAVE_IPV6 */
 
       if (binfo->peer == bgp->peer_self)
 	{
@@ -6342,7 +6294,6 @@ route_vty_out_detail (struct vty *vty, struct bgp *bgp, struct prefix *p,
 	}
       vty_out (vty, "%s", VTY_NEWLINE);
 
-#ifdef HAVE_IPV6
       /* display nexthop local */
       if (attr->extra && attr->extra->mp_nexthop_len == 32)
 	{
@@ -6351,7 +6302,6 @@ route_vty_out_detail (struct vty *vty, struct bgp *bgp, struct prefix *p,
 			      buf, INET6_ADDRSTRLEN),
 		   VTY_NEWLINE);
 	}
-#endif /* HAVE_IPV6 */
 
       /* Line 3 display Origin, Med, Locpref, Weight, valid, Int/Ext/Local, Atomic, best */
       vty_out (vty, "      Origin %s", bgp_origin_long_str[attr->origin]);
@@ -7227,7 +7177,6 @@ DEFUN (show_bgp_ipv4_vpn_route,
   return bgp_show_route (vty, NULL, argv[0], AFI_IP, SAFI_MPLS_VPN, NULL, 0);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_vpn_route,
        show_bgp_ipv6_vpn_route_cmd,
        "show bgp ipv6 vpn X:X::X:X",
@@ -7239,7 +7188,6 @@ DEFUN (show_bgp_ipv6_vpn_route,
 {
   return bgp_show_route (vty, NULL, argv[0], AFI_IP6, SAFI_MPLS_VPN, NULL, 0);
 }
-#endif
 
 DEFUN (show_bgp_ipv4_vpn_rd_route,
        show_bgp_ipv4_vpn_rd_route_cmd,
@@ -7299,7 +7247,6 @@ DEFUN (show_bgp_ipv4_encap_route,
   return bgp_show_route (vty, NULL, argv[0], AFI_IP, SAFI_ENCAP, NULL, 0);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_encap_route,
        show_bgp_ipv6_encap_route_cmd,
        "show bgp ipv6 encap X:X::X:X",
@@ -7311,7 +7258,6 @@ DEFUN (show_bgp_ipv6_encap_route,
 {
   return bgp_show_route (vty, NULL, argv[0], AFI_IP6, SAFI_ENCAP, NULL, 0);
 }
-#endif
 
 DEFUN (show_bgp_ipv4_safi_rd_route,
        show_bgp_ipv4_safi_rd_route_cmd,
@@ -7342,7 +7288,6 @@ DEFUN (show_bgp_ipv4_safi_rd_route,
   return bgp_show_route (vty, NULL, argv[2], AFI_IP, safi, &prd, 0);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_rd_route,
        show_bgp_ipv6_safi_rd_route_cmd,
        "show bgp ipv6 (encap|vpn) rd ASN:nn_or_IP-address:nn X:X::X:X",
@@ -7371,7 +7316,6 @@ DEFUN (show_bgp_ipv6_safi_rd_route,
     }
   return bgp_show_route (vty, NULL, argv[2], AFI_IP6, SAFI_ENCAP, &prd, 0);
 }
-#endif
 
 DEFUN (show_bgp_ipv4_prefix,
        show_bgp_ipv4_prefix_cmd,
@@ -7412,7 +7356,6 @@ DEFUN (show_bgp_ipv4_vpn_prefix,
   return bgp_show_route (vty, NULL, argv[0], AFI_IP, SAFI_MPLS_VPN, NULL, 1);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_vpn_prefix,
        show_bgp_ipv6_vpn_prefix_cmd,
        "show bgp ipv6 vpn X:X::X:X/M",
@@ -7424,7 +7367,6 @@ DEFUN (show_bgp_ipv6_vpn_prefix,
 {
   return bgp_show_route (vty, NULL, argv[0], AFI_IP6, SAFI_MPLS_VPN, NULL, 1);
 }
-#endif
 
 DEFUN (show_bgp_ipv4_encap_prefix,
        show_bgp_ipv4_encap_prefix_cmd,
@@ -7439,7 +7381,6 @@ DEFUN (show_bgp_ipv4_encap_prefix,
   return bgp_show_route (vty, NULL, argv[0], AFI_IP, SAFI_ENCAP, NULL, 1);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_encap_prefix,
        show_bgp_ipv6_encap_prefix_cmd,
        "show bgp ipv6 encap X:X::X:X/M",
@@ -7452,7 +7393,6 @@ DEFUN (show_bgp_ipv6_encap_prefix,
 {
   return bgp_show_route (vty, NULL, argv[0], AFI_IP6, SAFI_ENCAP, NULL, 1);
 }
-#endif
 
 DEFUN (show_bgp_ipv4_safi_rd_prefix,
        show_bgp_ipv4_safi_rd_prefix_cmd,
@@ -7484,7 +7424,6 @@ DEFUN (show_bgp_ipv4_safi_rd_prefix,
   return bgp_show_route (vty, NULL, argv[2], AFI_IP, safi, &prd, 1);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_rd_prefix,
        show_bgp_ipv6_safi_rd_prefix_cmd,
        "show bgp ipv6 (encap|vpn) rd ASN:nn_or_IP-address:nn X:X::X:X/M",
@@ -7514,7 +7453,6 @@ DEFUN (show_bgp_ipv6_safi_rd_prefix,
     }
   return bgp_show_route (vty, NULL, argv[2], AFI_IP6, safi, &prd, 1);
 }
-#endif
 
 DEFUN (show_bgp_afi_safi_view,
        show_bgp_afi_safi_view_cmd,
@@ -7632,7 +7570,6 @@ DEFUN (show_bgp_afi,
                    NULL);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi,
        show_bgp_ipv6_safi_cmd,
        "show bgp ipv6 (unicast|multicast)",
@@ -7867,9 +7804,6 @@ DEFUN (show_bgp_view_ipv6_prefix,
   return bgp_show_route (vty, argv[0], argv[1], AFI_IP6, SAFI_UNICAST, NULL, 1); 
 }
 
-#endif
-
-
 static int
 bgp_show_regexp (struct vty *vty, int argc, const char **argv, afi_t afi,
 		 safi_t safi, enum bgp_show_type type)
@@ -7974,7 +7908,6 @@ DEFUN (show_ip_bgp_ipv4_regexp,
 			  bgp_show_type_regexp);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_regexp, 
        show_bgp_regexp_cmd,
        "show bgp regexp .LINE",
@@ -8014,7 +7947,6 @@ DEFUN (show_ipv6_mbgp_regexp,
   return bgp_show_regexp (vty, argc, argv, AFI_IP6, SAFI_MULTICAST,
 			  bgp_show_type_regexp);
 }
-#endif /* HAVE_IPV6 */
 
 DEFUN (show_bgp_ipv4_safi_flap_regexp,
        show_bgp_ipv4_safi_flap_regexp_cmd,
@@ -8055,7 +7987,6 @@ ALIAS (show_bgp_ipv4_safi_flap_regexp,
        "Display routes matching the AS path regular expression\n"
        "A regular-expression to match the BGP AS paths\n")
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_flap_regexp,
        show_bgp_ipv6_safi_flap_regexp_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) flap-statistics regexp .LINE",
@@ -8094,7 +8025,6 @@ ALIAS (show_bgp_ipv6_safi_flap_regexp,
        "Display flap statistics of routes\n"
        "Display routes matching the AS path regular expression\n"
        "A regular-expression to match the BGP AS paths\n")
-#endif
 
 DEFUN (show_bgp_ipv4_safi_regexp, 
        show_bgp_ipv4_safi_regexp_cmd,
@@ -8118,7 +8048,7 @@ DEFUN (show_bgp_ipv4_safi_regexp,
   return bgp_show_regexp (vty, argc-1, argv+1, AFI_IP, safi,
 			  bgp_show_type_regexp);
 }
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_regexp, 
        show_bgp_ipv6_safi_regexp_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) regexp .LINE",
@@ -8154,8 +8084,6 @@ DEFUN (show_bgp_ipv6_regexp,
   return bgp_show_regexp (vty, argc, argv, AFI_IP6, SAFI_UNICAST,
 			  bgp_show_type_regexp);
 }
-
-#endif /* HAVE_IPV6 */
 
 static int
 bgp_show_prefix_list (struct vty *vty, const char *prefix_list_str, afi_t afi,
@@ -8231,7 +8159,6 @@ DEFUN (show_ip_bgp_ipv4_prefix_list,
 			       bgp_show_type_prefix_list);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_prefix_list, 
        show_bgp_prefix_list_cmd,
        "show bgp prefix-list WORD",
@@ -8280,7 +8207,6 @@ DEFUN (show_ipv6_mbgp_prefix_list,
   return bgp_show_prefix_list (vty, argv[0], AFI_IP6, SAFI_MULTICAST,
 			       bgp_show_type_prefix_list);
 }
-#endif /* HAVE_IPV6 */
 
 DEFUN (show_bgp_ipv4_prefix_list, 
        show_bgp_ipv4_prefix_list_cmd,
@@ -8333,7 +8259,6 @@ ALIAS (show_bgp_ipv4_safi_flap_prefix_list,
        "Display routes conforming to the prefix-list\n"
        "IP prefix-list name\n")
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_flap_prefix_list, 
        show_bgp_ipv6_safi_flap_prefix_list_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) flap-statistics prefix-list WORD",
@@ -8370,7 +8295,6 @@ ALIAS (show_bgp_ipv6_safi_flap_prefix_list,
        "Display flap statistics of routes\n"
        "Display routes conforming to the prefix-list\n"
        "IP prefix-list name\n")
-#endif
 
 DEFUN (show_bgp_ipv4_safi_prefix_list, 
        show_bgp_ipv4_safi_prefix_list_cmd,
@@ -8393,7 +8317,7 @@ DEFUN (show_bgp_ipv4_safi_prefix_list,
   return bgp_show_prefix_list (vty, argv[1], AFI_IP, safi,
 			       bgp_show_type_prefix_list);
 }
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_prefix_list, 
        show_bgp_ipv6_safi_prefix_list_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) prefix-list WORD",
@@ -8415,8 +8339,6 @@ DEFUN (show_bgp_ipv6_safi_prefix_list,
   return bgp_show_prefix_list (vty, argv[1], AFI_IP6, safi,
 			       bgp_show_type_prefix_list);
 }
-
-#endif /* HAVE_IPV6 */
 
 static int
 bgp_show_filter_list (struct vty *vty, const char *filter, afi_t afi,
@@ -8492,7 +8414,6 @@ DEFUN (show_ip_bgp_ipv4_filter_list,
 			       bgp_show_type_filter_list);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_filter_list, 
        show_bgp_filter_list_cmd,
        "show bgp filter-list WORD",
@@ -8532,7 +8453,6 @@ DEFUN (show_ipv6_mbgp_filter_list,
   return bgp_show_filter_list (vty, argv[0], AFI_IP6, SAFI_MULTICAST,
 			       bgp_show_type_filter_list);
 }
-#endif /* HAVE_IPV6 */
 
 DEFUN (show_ip_bgp_dampening_info,
        show_ip_bgp_dampening_params_cmd,
@@ -8598,7 +8518,6 @@ ALIAS (show_bgp_ipv4_safi_flap_filter_list,
        "Display routes conforming to the filter-list\n"
        "Regular expression access list name\n")
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_flap_filter_list, 
        show_bgp_ipv6_safi_flap_filter_list_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) flap-statistics filter-list WORD",
@@ -8636,7 +8555,6 @@ ALIAS (show_bgp_ipv6_safi_flap_filter_list,
        "Display flap statistics of routes\n"
        "Display routes conforming to the filter-list\n"
        "Regular expression access list name\n")
-#endif
 
 DEFUN (show_bgp_ipv4_safi_filter_list, 
        show_bgp_ipv4_safi_filter_list_cmd,
@@ -8659,7 +8577,7 @@ DEFUN (show_bgp_ipv4_safi_filter_list,
   return bgp_show_filter_list (vty, argv[1], AFI_IP, safi,
 			         bgp_show_type_filter_list);
 }
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_filter_list, 
        show_bgp_ipv6_safi_filter_list_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) filter-list WORD",
@@ -8694,8 +8612,6 @@ DEFUN (show_bgp_ipv6_filter_list,
   return bgp_show_filter_list (vty, argv[0], AFI_IP6, SAFI_UNICAST,
 			       bgp_show_type_filter_list);
 }
-
-#endif /* HAVE_IPV6 */
 
 static int
 bgp_show_route_map (struct vty *vty, const char *rmap_str, afi_t afi,
@@ -8869,7 +8785,6 @@ DEFUN (show_ip_bgp_ipv4_community_all,
 		   bgp_show_type_community_all, NULL);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_community_all,
        show_bgp_community_all_cmd,
        "show bgp community",
@@ -8914,7 +8829,6 @@ DEFUN (show_ipv6_mbgp_community_all,
   return bgp_show (vty, NULL, AFI_IP6, SAFI_MULTICAST,
 		   bgp_show_type_community_all, NULL);
 }
-#endif /* HAVE_IPV6 */
 
 DEFUN (show_bgp_ipv4_route_map, 
        show_bgp_ipv4_route_map_cmd,
@@ -8966,7 +8880,7 @@ ALIAS (show_bgp_ipv4_safi_flap_route_map,
        "Display flap statistics of routes\n"
        "Display routes matching the route-map\n"
        "A route-map to match on\n")
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_flap_route_map, 
        show_bgp_ipv6_safi_flap_route_map_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) flap-statistics route-map WORD",
@@ -9003,7 +8917,6 @@ ALIAS (show_bgp_ipv6_safi_flap_route_map,
        "Display flap statistics of routes\n"
        "Display routes matching the route-map\n"
        "A route-map to match on\n")
-#endif
 
 DEFUN (show_bgp_ipv4_safi_route_map, 
        show_bgp_ipv4_safi_route_map_cmd,
@@ -9026,7 +8939,7 @@ DEFUN (show_bgp_ipv4_safi_route_map,
   return bgp_show_route_map (vty, argv[1], AFI_IP, safi,
 			     bgp_show_type_route_map);
 }
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_route_map, 
        show_bgp_ipv6_safi_route_map_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) route-map WORD",
@@ -9061,7 +8974,6 @@ DEFUN (show_bgp_ipv6_route_map,
   return bgp_show_route_map (vty, argv[0], AFI_IP6, SAFI_UNICAST,
 			     bgp_show_type_route_map);
 }
-#endif
 
 DEFUN (show_bgp_ipv4_cidr_only,
        show_bgp_ipv4_cidr_only_cmd,
@@ -9132,17 +9044,11 @@ DEFUN (show_bgp_ipv4_safi_cidr_only,
 /* new046 */
 DEFUN (show_bgp_afi_safi_community_all,
        show_bgp_afi_safi_community_all_cmd,
-#ifdef HAVE_IPV6
        "show bgp (ipv4|ipv6) (encap|multicast|unicast|vpn) community",
-#else
-       "show bgp ipv4 (encap|multicast|unicast|vpn) community",
-#endif
        SHOW_STR
        BGP_STR
        "Address family\n"
-#ifdef HAVE_IPV6
        "Address family\n"
-#endif
        "Address Family modifier\n"
        "Address Family modifier\n"
        "Address Family modifier\n"
@@ -9165,17 +9071,11 @@ DEFUN (show_bgp_afi_safi_community_all,
 }
 DEFUN (show_bgp_afi_community_all,
        show_bgp_afi_community_all_cmd,
-#ifdef HAVE_IPV6
        "show bgp (ipv4|ipv6) community",
-#else
-       "show bgp ipv4 community",
-#endif
        SHOW_STR
        BGP_STR
        "Address family\n"
-#ifdef HAVE_IPV6
        "Address family\n"
-#endif
        "Display routes matching the communities\n")
 {
   afi_t		afi;
@@ -9589,7 +9489,6 @@ ALIAS (show_ip_bgp_ipv4_community_exact,
        "Do not export to next AS (well-known community)\n"
        "Exact match of the communities")
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_community,
        show_bgp_community_cmd,
        "show bgp community (AA:NN|local-AS|no-advertise|no-export)",
@@ -10207,7 +10106,6 @@ ALIAS (show_ipv6_mbgp_community_exact,
        "Do not advertise to any peer (well-known community)\n"
        "Do not export to next AS (well-known community)\n"
        "Exact match of the communities")
-#endif /* HAVE_IPV6 */
 
 DEFUN (show_bgp_ipv4_community,
        show_bgp_ipv4_community_cmd,
@@ -10372,19 +10270,13 @@ ALIAS (show_bgp_ipv4_safi_community,
 
 DEFUN (show_bgp_view_afi_safi_community_all,
        show_bgp_view_afi_safi_community_all_cmd,
-#ifdef HAVE_IPV6
        "show bgp view WORD (ipv4|ipv6) (unicast|multicast) community",
-#else
-       "show bgp view WORD ipv4 (unicast|multicast) community",
-#endif
        SHOW_STR
        BGP_STR
        "BGP view\n"
        "View name\n"
        "Address family\n"
-#ifdef HAVE_IPV6
        "Address family\n"
-#endif
        "Address Family modifier\n"
        "Address Family modifier\n"
        "Display routes matching the communities\n")
@@ -10401,31 +10293,20 @@ DEFUN (show_bgp_view_afi_safi_community_all,
       return CMD_WARNING;
     }
 
-#ifdef HAVE_IPV6
   afi = (strncmp (argv[1], "ipv6", 4) == 0) ? AFI_IP6 : AFI_IP;
   safi = (strncmp (argv[2], "m", 1) == 0) ? SAFI_MULTICAST : SAFI_UNICAST;
-#else
-  afi = AFI_IP;
-  safi = (strncmp (argv[1], "m", 1) == 0) ? SAFI_MULTICAST : SAFI_UNICAST;
-#endif
   return bgp_show (vty, bgp, afi, safi, bgp_show_type_community_all, NULL);
 }
 
 DEFUN (show_bgp_view_afi_safi_community,
        show_bgp_view_afi_safi_community_cmd,
-#ifdef HAVE_IPV6
        "show bgp view WORD (ipv4|ipv6) (unicast|multicast) community (AA:NN|local-AS|no-advertise|no-export)",
-#else
-       "show bgp view WORD ipv4 (unicast|multicast) community (AA:NN|local-AS|no-advertise|no-export)",
-#endif
        SHOW_STR
        BGP_STR
        "BGP view\n"
        "View name\n"
        "Address family\n"
-#ifdef HAVE_IPV6
        "Address family\n"
-#endif
        "Address family modifier\n"
        "Address family modifier\n"
        "Display routes matching the communities\n"
@@ -10437,32 +10318,20 @@ DEFUN (show_bgp_view_afi_safi_community,
   int afi;
   int safi;
 
-#ifdef HAVE_IPV6
   afi = (strncmp (argv[1], "ipv6", 4) == 0) ? AFI_IP6 : AFI_IP;
   safi = (strncmp (argv[2], "m", 1) == 0) ? SAFI_MULTICAST : SAFI_UNICAST;
   return bgp_show_community (vty, argv[0], argc-3, &argv[3], 0, afi, safi);
-#else
-  afi = AFI_IP;
-  safi = (strncmp (argv[1], "m", 1) == 0) ? SAFI_MULTICAST : SAFI_UNICAST;
-  return bgp_show_community (vty, argv[0], argc-2, &argv[2], 0, afi, safi);
-#endif
 }
 
 ALIAS (show_bgp_view_afi_safi_community,
        show_bgp_view_afi_safi_community2_cmd,
-#ifdef HAVE_IPV6
        "show bgp view WORD (ipv4|ipv6) (unicast|multicast) community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
-#else
-       "show bgp view WORD ipv4 (unicast|multicast) community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
-#endif
        SHOW_STR
        BGP_STR
        "BGP view\n"
        "View name\n"
        "Address family\n"
-#ifdef HAVE_IPV6
        "Address family\n"
-#endif
        "Address family modifier\n"
        "Address family modifier\n"
        "Display routes matching the communities\n"
@@ -10477,19 +10346,13 @@ ALIAS (show_bgp_view_afi_safi_community,
 
 ALIAS (show_bgp_view_afi_safi_community,
        show_bgp_view_afi_safi_community3_cmd,
-#ifdef HAVE_IPV6
        "show bgp view WORD (ipv4|ipv6) (unicast|multicast) community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
-#else
-       "show bgp view WORD ipv4 (unicast|multicast) community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
-#endif
        SHOW_STR
        BGP_STR
        "BGP view\n"
        "View name\n"
        "Address family\n"
-#ifdef HAVE_IPV6
        "Address family\n"
-#endif
        "Address family modifier\n"
        "Address family modifier\n"
        "Display routes matching the communities\n"
@@ -10508,19 +10371,13 @@ ALIAS (show_bgp_view_afi_safi_community,
 
 ALIAS (show_bgp_view_afi_safi_community,
        show_bgp_view_afi_safi_community4_cmd,
-#ifdef HAVE_IPV6
        "show bgp view WORD (ipv4|ipv6) (unicast|multicast) community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
-#else
-       "show bgp view WORD ipv4 (unicast|multicast) community (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export) (AA:NN|local-AS|no-advertise|no-export)",
-#endif
        SHOW_STR
        BGP_STR
        "BGP view\n"
        "View name\n"
        "Address family\n"
-#ifdef HAVE_IPV6
        "Address family\n"
-#endif
        "Address family modifier\n"
        "Address family modifier\n"
        "Display routes matching the communities\n"
@@ -10710,8 +10567,6 @@ ALIAS (show_bgp_ipv4_safi_community4_exact,
        "Do not export to next AS (well-known community)\n"
        "Exact match of the communities")
 
-
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_community,
        show_bgp_ipv6_safi_community_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) community (AA:NN|local-AS|no-advertise|no-export)",
@@ -10912,8 +10767,6 @@ ALIAS (show_bgp_community_exact,
        "Do not export to next AS (well-known community)\n"
        "Exact match of the communities")
 
-#endif /* HAVE_IPV6 */
-
 static int
 bgp_show_community_list (struct vty *vty, const char *com, int exact,
 			 afi_t afi, safi_t safi)
@@ -10999,7 +10852,6 @@ DEFUN (show_ip_bgp_ipv4_community_list_exact,
   return bgp_show_community_list (vty, argv[1], 1, AFI_IP, SAFI_UNICAST);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_community_list,
        show_bgp_community_list_cmd,
        "show bgp community-list (<1-500>|WORD)",
@@ -11099,7 +10951,6 @@ DEFUN (show_ipv6_mbgp_community_list_exact,
 {
   return bgp_show_community_list (vty, argv[0], 1, AFI_IP6, SAFI_MULTICAST);
 }
-#endif /* HAVE_IPV6 */
 
 DEFUN (show_bgp_ipv4_community_list,
        show_bgp_ipv4_community_list_cmd,
@@ -11165,7 +11016,6 @@ DEFUN (show_bgp_ipv4_safi_community_list_exact,
   return bgp_show_community_list (vty, argv[1], 1, AFI_IP, SAFI_UNICAST);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_community_list,
        show_bgp_ipv6_safi_community_list_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) community-list (<1-500>|WORD)",
@@ -11212,7 +11062,6 @@ DEFUN (show_bgp_ipv6_safi_community_list_exact,
   }
   return bgp_show_community_list (vty, argv[1], 1, AFI_IP6, safi);
 }
-#endif /* HAVE_IPV6 */
 
 static int
 bgp_show_prefix_longer (struct vty *vty, const char *prefix, afi_t afi,
@@ -11339,7 +11188,6 @@ ALIAS (show_ip_bgp_flap_prefix,
        "Display flap statistics of routes\n"
        "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_prefix_longer,
        show_bgp_prefix_longer_cmd,
        "show bgp X:X::X:X/M longer-prefixes",
@@ -11379,7 +11227,6 @@ DEFUN (show_ipv6_mbgp_prefix_longer,
   return bgp_show_prefix_longer (vty, argv[0], AFI_IP6, SAFI_MULTICAST,
 				 bgp_show_type_prefix_longer);
 }
-#endif /* HAVE_IPV6 */
 
 DEFUN (show_bgp_ipv4_prefix_longer,
        show_bgp_ipv4_prefix_longer_cmd,
@@ -11433,7 +11280,6 @@ ALIAS (show_bgp_ipv4_safi_flap_prefix_longer,
        "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n"
        "Display route and more specific routes\n")
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_flap_prefix_longer,
        show_bgp_ipv6_safi_flap_prefix_longer_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) flap-statistics X:X::X:X/M longer-prefixes",
@@ -11471,7 +11317,6 @@ ALIAS (show_bgp_ipv6_safi_flap_prefix_longer,
        "Display flap statistics of routes\n"
        "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n"
        "Display route and more specific routes\n")
-#endif
 
 DEFUN (show_bgp_ipv4_safi_prefix_longer,
        show_bgp_ipv4_safi_prefix_longer_cmd,
@@ -11497,7 +11342,6 @@ DEFUN (show_bgp_ipv4_safi_prefix_longer,
 				   bgp_show_type_prefix_longer);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_prefix_longer,
        show_bgp_ipv6_safi_prefix_longer_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) X:X::X:X/M longer-prefixes",
@@ -11521,7 +11365,6 @@ DEFUN (show_bgp_ipv6_safi_prefix_longer,
   return bgp_show_prefix_longer (vty, argv[1], AFI_IP6, safi,
 				   bgp_show_type_prefix_longer);
 }
-#endif
 
 DEFUN (show_bgp_ipv4_safi_flap_address,
        show_bgp_ipv4_safi_flap_address_cmd,
@@ -11558,7 +11401,7 @@ ALIAS (show_bgp_ipv4_safi_flap_address,
        "Display detailed information about dampening\n"
        "Display flap statistics of routes\n"
        "Network in the BGP routing table to display\n")
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_flap_address,
        show_bgp_ipv6_flap_address_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) flap-statistics A.B.C.D",
@@ -11594,7 +11437,6 @@ ALIAS (show_bgp_ipv6_flap_address,
        "Display detailed information about dampening\n"
        "Display flap statistics of routes\n"
        "Network in the BGP routing table to display\n")
-#endif
 
 DEFUN (show_bgp_ipv4_safi_flap_prefix,
        show_bgp_ipv4_safi_flap_prefix_cmd,
@@ -11633,7 +11475,6 @@ ALIAS (show_bgp_ipv4_safi_flap_prefix,
        "Display flap statistics of routes\n"
        "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_safi_flap_prefix,
        show_bgp_ipv6_safi_flap_prefix_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) flap-statistics X:X::X:X/M",
@@ -11683,8 +11524,6 @@ DEFUN (show_bgp_ipv6_prefix_longer,
   return bgp_show_prefix_longer (vty, argv[0], AFI_IP6, SAFI_UNICAST,
 				 bgp_show_type_prefix_longer);
 }
-
-#endif /* HAVE_IPV6 */
 
 static struct peer *
 peer_lookup_in_view (struct vty *vty, const char *view_name, 
@@ -12355,7 +12194,7 @@ DEFUN (show_bgp_ipv4_safi_neighbor_prefix_counts,
 
   return bgp_peer_counts (vty, peer, AFI_IP, safi);
 }
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_neighbor_prefix_counts,
        show_bgp_ipv6_safi_neighbor_prefix_counts_cmd,
        "show bgp ipv6 (unicast|multicast) neighbors (A.B.C.D|X:X::X:X) prefix-counts",
@@ -12385,7 +12224,6 @@ DEFUN (show_bgp_ipv6_safi_neighbor_prefix_counts,
 
   return bgp_peer_counts (vty, peer, AFI_IP6, safi);
 }
-#endif
 
 DEFUN (show_ip_bgp_encap_neighbor_prefix_counts,
        show_ip_bgp_encap_neighbor_prefix_counts_cmd,
@@ -12584,7 +12422,6 @@ DEFUN (show_ip_bgp_ipv4_neighbor_advertised_route,
   return peer_adj_routes (vty, peer, AFI_IP, SAFI_UNICAST, 0);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_view_neighbor_advertised_route,
        show_bgp_view_neighbor_advertised_route_cmd,
        "show bgp view WORD neighbors (A.B.C.D|X:X::X:X) advertised-routes",
@@ -12688,7 +12525,6 @@ DEFUN (ipv6_mbgp_neighbor_advertised_route,
 
   return peer_adj_routes (vty, peer, AFI_IP6, SAFI_MULTICAST, 0);
 }
-#endif /* HAVE_IPV6 */
 
 DEFUN (show_ip_bgp_view_neighbor_received_routes,
        show_ip_bgp_view_neighbor_received_routes_cmd,
@@ -12911,7 +12747,7 @@ DEFUN (show_bgp_ipv4_safi_neighbor_advertised_route,
 
   return peer_adj_routes (vty, peer, AFI_IP, safi, 0);
 }
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_neighbor_advertised_route,
        show_bgp_ipv6_safi_neighbor_advertised_route_cmd,
        "show bgp ipv6 (multicast|unicast) neighbors (A.B.C.D|X:X::X:X) advertised-routes",
@@ -12991,8 +12827,6 @@ DEFUN (show_bgp_view_ipv6_neighbor_received_routes,
 
   return peer_adj_routes (vty, peer, AFI_IP6, SAFI_UNICAST, 1);
 }
-#endif /* HAVE_IPV6 */
-
 
 DEFUN (show_bgp_ipv4_safi_neighbor_received_routes,
        show_bgp_ipv4_safi_neighbor_received_routes_cmd,
@@ -13023,7 +12857,7 @@ DEFUN (show_bgp_ipv4_safi_neighbor_received_routes,
   
   return peer_adj_routes (vty, peer, AFI_IP, safi, 1);
 }
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_neighbor_received_routes,
        show_bgp_ipv6_safi_neighbor_received_routes_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) neighbors (A.B.C.D|X:X::X:X) received-routes",
@@ -13053,7 +12887,6 @@ DEFUN (show_bgp_ipv6_safi_neighbor_received_routes,
   
   return peer_adj_routes (vty, peer, AFI_IP6, safi, 1);
 }
-#endif
 
 DEFUN (show_bgp_view_afi_safi_neighbor_adv_recd_routes,
        show_bgp_view_afi_safi_neighbor_adv_recd_routes_cmd,
@@ -13240,7 +13073,7 @@ DEFUN (show_bgp_ipv4_safi_neighbor_received_prefix_filter,
 
   return CMD_SUCCESS;
 }
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_neighbor_received_prefix_filter,
        show_bgp_ipv6_safi_neighbor_received_prefix_filter_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) neighbors (A.B.C.D|X:X::X:X) received prefix-filter",
@@ -13377,7 +13210,6 @@ DEFUN (show_bgp_view_ipv6_neighbor_received_prefix_filter,
 
   return CMD_SUCCESS;
 }
-#endif /* HAVE_IPV6 */
 
 static int
 bgp_show_neighbor_route (struct vty *vty, struct peer *peer, afi_t afi,
@@ -13694,7 +13526,7 @@ DEFUN (show_bgp_ipv4_safi_neighbor_flap,
   return bgp_show_neighbor_route (vty, peer, AFI_IP, safi,
 				  bgp_show_type_flap_neighbor);
 }
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_neighbor_flap,
        show_bgp_ipv6_safi_neighbor_flap_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) neighbors (A.B.C.D|X:X::X:X) flap-statistics",
@@ -13724,7 +13556,6 @@ DEFUN (show_bgp_ipv6_safi_neighbor_flap,
   return bgp_show_neighbor_route (vty, peer, AFI_IP6, safi,
 				  bgp_show_type_flap_neighbor);
 }
-#endif
 
 DEFUN (show_bgp_ipv4_safi_neighbor_damp,
        show_bgp_ipv4_safi_neighbor_damp_cmd,
@@ -13755,7 +13586,7 @@ DEFUN (show_bgp_ipv4_safi_neighbor_damp,
   return bgp_show_neighbor_route (vty, peer, AFI_IP, safi,
 				  bgp_show_type_damp_neighbor);
 }
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_neighbor_damp,
        show_bgp_ipv6_safi_neighbor_damp_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) neighbors (A.B.C.D|X:X::X:X) dampened-routes",
@@ -13785,7 +13616,6 @@ DEFUN (show_bgp_ipv6_safi_neighbor_damp,
   return bgp_show_neighbor_route (vty, peer, AFI_IP6, safi,
 				  bgp_show_type_damp_neighbor);
 }
-#endif
 
 DEFUN (show_bgp_ipv4_safi_neighbor_routes,
        show_bgp_ipv4_safi_neighbor_routes_cmd,
@@ -13815,7 +13645,7 @@ DEFUN (show_bgp_ipv4_safi_neighbor_routes,
   return bgp_show_neighbor_route (vty, peer, AFI_IP, safi,
 				  bgp_show_type_neighbor);
 }
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_neighbor_routes,
        show_bgp_ipv6_safi_neighbor_routes_cmd,
        "show bgp ipv6 (multicast|unicast) neighbors (A.B.C.D|X:X::X:X) routes",
@@ -13844,7 +13674,6 @@ DEFUN (show_bgp_ipv6_safi_neighbor_routes,
   return bgp_show_neighbor_route (vty, peer, AFI_IP6, safi,
 				  bgp_show_type_neighbor);
 }
-#endif
 
 DEFUN (show_bgp_view_ipv4_safi_rsclient_route,
        show_bgp_view_ipv4_safi_rsclient_route_cmd,
@@ -14082,7 +13911,6 @@ ALIAS (show_bgp_view_ipv4_safi_rsclient_prefix,
        NEIGHBOR_ADDR_STR
        "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_view_ipv6_neighbor_routes,
        show_bgp_view_ipv6_neighbor_routes_cmd,
        "show bgp view WORD ipv6 neighbors (A.B.C.D|X:X::X:X) routes",
@@ -14339,8 +14167,6 @@ ALIAS (show_bgp_view_neighbor_damp,
        "Neighbor to display information about\n"
        "Display the dampened routes received from neighbor\n")
 
-#endif /* HAVE_IPV6 */
-
 DEFUN (show_bgp_view_rsclient,
        show_bgp_view_rsclient_cmd,
        "show bgp view WORD rsclient (A.B.C.D|X:X::X:X)",
@@ -14482,7 +14308,6 @@ ALIAS (show_bgp_view_ipv4_rsclient,
        "Information about Route Server Client\n"
        NEIGHBOR_ADDR_STR2)
 
-#ifdef HAVE_IPV6
 ALIAS (show_bgp_view_ipv6_rsclient,
        show_bgp_ipv6_rsclient_cmd,
        "show bgp ipv6 rsclient (A.B.C.D|X:X::X:X)",
@@ -15001,8 +14826,6 @@ ALIAS (show_bgp_view_ipv6_safi_rsclient_prefix,
        NEIGHBOR_ADDR_STR
        "IP prefix <network>/<length>, e.g., 3ffe::/16\n")
 
-#endif /* HAVE_IPV6 */
-
 struct bgp_table *bgp_distance_table;
 
 struct bgp_distance
@@ -15440,7 +15263,7 @@ ALIAS (show_bgp_ipv4_safi_dampened_paths,
        "Address Family modifier\n"
        "Display detailed information about dampening\n"
        "Display paths suppressed due to dampening\n")
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_dampened_paths,
        show_bgp_ipv6_safi_dampened_paths_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) dampened-paths",
@@ -15474,7 +15297,6 @@ ALIAS (show_bgp_ipv6_safi_dampened_paths,
        "Address Family modifier\n"
        "Display detailed information about dampening\n"
        "Display paths suppressed due to dampening\n")
-#endif
 
 DEFUN (show_bgp_ipv4_safi_flap_statistics,
        show_bgp_ipv4_safi_flap_statistics_cmd,
@@ -15509,7 +15331,7 @@ ALIAS (show_bgp_ipv4_safi_flap_statistics,
        "Address Family modifier\n"
        "Display detailed information about dampening\n"
        "Display flap statistics of routes\n")
-#ifdef HAVE_IPV6
+
 DEFUN (show_bgp_ipv6_safi_flap_statistics,
        show_bgp_ipv6_safi_flap_statistics_cmd,
        "show bgp ipv6 (encap|multicast|unicast|vpn) flap-statistics",
@@ -15543,7 +15365,6 @@ ALIAS (show_bgp_ipv6_safi_flap_statistics,
        "Address Family modifier\n"
        "Display detailed information about dampening\n"
        "Display flap statistics of routes\n")
-#endif
 
 /* Display specified route of BGP table. */
 static int
@@ -16280,7 +16101,6 @@ bgp_route_init (void)
   /* prefix count */
   install_element (ENABLE_NODE, &show_bgp_ipv4_safi_neighbor_prefix_counts_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_safi_neighbor_prefix_counts_cmd);
-#ifdef HAVE_IPV6
   install_element (ENABLE_NODE, &show_bgp_ipv6_neighbor_prefix_counts_cmd);
 
   /* New config IPv6 BGP commands.  */
@@ -16435,7 +16255,6 @@ bgp_route_init (void)
   /* Statistics */
   install_element (ENABLE_NODE, &show_bgp_statistics_cmd);
   install_element (ENABLE_NODE, &show_bgp_statistics_view_cmd);
-#endif /* HAVE_IPV6 */
 
   install_element (BGP_NODE, &bgp_distance_cmd);
   install_element (BGP_NODE, &no_bgp_distance_cmd);
@@ -16499,10 +16318,8 @@ bgp_route_init (void)
   install_element (BGP_IPV4M_NODE, &no_bgp_network_mask_backdoor_ttl_cmd);
   install_element (BGP_IPV4M_NODE, &no_bgp_network_mask_natural_backdoor_ttl_cmd);
 
-#ifdef HAVE_IPV6
   install_element (BGP_IPV6_NODE, &ipv6_bgp_network_ttl_cmd);
   install_element (BGP_IPV6_NODE, &no_ipv6_bgp_network_ttl_cmd);
-#endif
 
   /* old style commands */
   install_element (VIEW_NODE, &show_ip_bgp_cmd);

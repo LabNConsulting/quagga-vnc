@@ -589,7 +589,6 @@ DEFUN (show_bgp_ipv4_vpn,
   return bgp_show_mpls_vpn (vty, AFI_IP, NULL, bgp_show_type_normal, NULL, 0);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_vpn,
        show_bgp_ipv6_vpn_cmd,
        "show bgp ipv6 vpn",
@@ -600,7 +599,6 @@ DEFUN (show_bgp_ipv6_vpn,
 {
   return bgp_show_mpls_vpn (vty, AFI_IP6, NULL, bgp_show_type_normal, NULL, 0);
 }
-#endif
 
 DEFUN (show_bgp_ipv4_vpn_rd,
        show_bgp_ipv4_vpn_rd_cmd,
@@ -748,7 +746,6 @@ DEFUN (show_bgp_ipv4_vpn_neighbor_routes,
   return bgp_show_mpls_vpn (vty, AFI_IP, NULL, bgp_show_type_neighbor, &su, 0);
 }
 
-#ifdef HAVE_IPV6
 DEFUN (show_bgp_ipv6_vpn_neighbor_routes,
        show_bgp_ipv6_vpn_neighbor_routes_cmd,
        "show bgp ipv6 vpn neighbors (A.B.C.D|X:X::X:X) routes",
@@ -782,7 +779,6 @@ DEFUN (show_bgp_ipv6_vpn_neighbor_routes,
 
   return bgp_show_mpls_vpn (vty, AFI_IP6, NULL, bgp_show_type_neighbor, &su, 0);
 }
-#endif
 
 DEFUN (show_bgp_ipv4_vpn_neighbor_advertised_routes,
        show_bgp_ipv4_vpn_neighbor_advertised_routes_cmd,
@@ -1025,7 +1021,6 @@ bgp_mplsvpn_init (void)
   install_element (VIEW_NODE, &show_bgp_ipv4_vpn_rd_neighbor_advertised_routes_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv4_vpn_rd_neighbor_routes_cmd);
 
-#ifdef HAVE_IPV6
   install_element (VIEW_NODE, &show_bgp_ipv6_vpn_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_vpn_rd_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_vpn_tags_cmd);
@@ -1034,7 +1029,6 @@ bgp_mplsvpn_init (void)
   install_element (VIEW_NODE, &show_bgp_ipv6_vpn_neighbor_advertised_routes_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_vpn_rd_neighbor_advertised_routes_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_vpn_rd_neighbor_routes_cmd);
-#endif
 
   install_element (ENABLE_NODE, &show_bgp_ipv4_vpn_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_vpn_rd_cmd);
@@ -1045,7 +1039,6 @@ bgp_mplsvpn_init (void)
   install_element (ENABLE_NODE, &show_bgp_ipv4_vpn_rd_neighbor_advertised_routes_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv4_vpn_rd_neighbor_routes_cmd);
 
-#ifdef HAVE_IPV6
   install_element (ENABLE_NODE, &show_bgp_ipv6_vpn_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_vpn_rd_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_vpn_tags_cmd);
@@ -1054,5 +1047,4 @@ bgp_mplsvpn_init (void)
   install_element (ENABLE_NODE, &show_bgp_ipv6_vpn_neighbor_advertised_routes_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_vpn_rd_neighbor_advertised_routes_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_vpn_rd_neighbor_routes_cmd);
-#endif
 }
