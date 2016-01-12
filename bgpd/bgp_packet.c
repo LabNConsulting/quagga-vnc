@@ -212,7 +212,9 @@ bgp_update_packet (struct peer *peer, afi_t afi, safi_t safi)
 	  /* 5: Encode all the attributes, except MP_REACH_NLRI attr. */
 	  total_attr_len = bgp_packet_attribute (NULL, peer, s,
 	                                         adv->baa->attr,
-	                                         &rn->p, afi, safi,
+                                                 ((afi == AFI_IP && safi == SAFI_UNICAST) ?
+                                                  &rn->p : NULL),
+                                                 afi, safi,
 	                                         from, prd, tag);
 	}
 

@@ -2631,7 +2631,6 @@ bgp_packet_attribute (struct bgp *bgp, struct peer *peer,
   /* Remember current pointer. */
   cp = stream_get_endp (s);
 
-#if 0                           /* duplicates mpattr included in bgp_packet.c */
   if (p && !(afi == AFI_IP && safi == SAFI_UNICAST))
     {
       size_t mpattrlen_pos = 0;
@@ -2639,7 +2638,6 @@ bgp_packet_attribute (struct bgp *bgp, struct peer *peer,
       bgp_packet_mpattr_prefix(s, afi, safi, p, prd, tag);
       bgp_packet_mpattr_end(s, mpattrlen_pos);
     }
-#endif
   /* Origin attribute. */
   stream_putc (s, BGP_ATTR_FLAG_TRANS);
   stream_putc (s, BGP_ATTR_ORIGIN);
@@ -2961,13 +2959,9 @@ bgp_packet_attribute (struct bgp *bgp, struct peer *peer,
       stream_putl (s, attr->extra->aggregator_as);
       stream_put_ipv4 (s, attr->extra->aggregator_addr.s_addr);
     }
-  
-  if ((p->family == AF_INET
-#ifdef HAVE_IPV6
-  || p->family == AF_INET6
-#endif
-  ) &&
-    ((safi == SAFI_ENCAP) || (safi == SAFI_MPLS_VPN)))
+
+  if ((afi == AFI_IP || afi == AFI_IP6) &&
+      (safi == SAFI_ENCAP || safi == SAFI_MPLS_VPN))
     {
         struct bgp_attr_encap_subtlv *pEncap;
         unsigned int	              attrlenfield = 0;
