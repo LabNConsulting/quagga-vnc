@@ -1,0 +1,51 @@
+Reference counting for nodes in VPN and ENCAP import route tables
+
+VPN Node references to count:
+    BIs
+    vpn monitors
+
+Encap Node references to count:
+    BIs
+    encap monitors
+
+
+(lock => increment; unlock = decr and delete if 0)
+
+route_node_match	longest match, incr upon success
+route_node_lookup	exact match, incr upon success
+route_node_get		exact match or create, incr always
+route_top		get top node, incr upon success
+
+see also TBDs in .c files
+
+
+
+Count these references:
+
+VPN import table:
+    Node's BIs
+    Node's VPN monitors
+
+ENCAP import table
+    Node's BIs
+    Node's ENCAP monitors
+
+
+
+
+Files:
+
+rfapi.c
+    route_node_match:	fixes done
+    route_node_lookup:	only used for non-import tables
+    route_node_get:	fixes done
+
+bgp_rfapi_cfg.c:
+    route_node_match:	only used for non-import tables
+    route_node_get:	only used for non-import tables
+
+rfapi_import.c
+    route_node_lookup:	fixes done
+    route_node_get:	in progress
+    route_top:		fixes done
+
