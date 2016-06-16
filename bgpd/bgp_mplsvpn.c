@@ -45,16 +45,21 @@ decode_rd_type (u_char *pnt)
   u_int16_t v;
   
   v = ((u_int16_t) *pnt++ << 8);
-  v |= (u_int16_t) *pnt;
-
 #if ENABLE_BGP_VNC
   /*
-   * VNC L2 stores LHI in lower byte, so mask it off
+   * VNC L2 stores LHI in lower byte, so omit it
    */
-  if ((v & 0xff00) == 0xff00)
-    v = 0xff00;
+  if (v != RD_TYPE_VNC_ETH)
 #endif
+    v |= (u_int16_t) *pnt;
+
   return v;
+}
+
+void
+encode_rd_type (u_int16_t v, u_char *pnt)
+{
+  *((u_int16_t *)pnt) = htons(v);
 }
 
 u_int32_t
@@ -226,7 +231,7 @@ bgp_nlri_parse_vpn (struct peer *peer, struct attr *attr,
           break;
 
 #if ENABLE_BGP_VNC
-	case RD_TYPE_EOI:
+	case RD_TYPE_VNC_ETH:
 	    break;
 #endif
 
@@ -392,7 +397,7 @@ prefix_rd2str (struct prefix_rd *prd, char *buf, size_t size)
       return buf;
     }
 #if ENABLE_BGP_VNC
-  else if (type == RD_TYPE_EOI)
+  else if (type == RD_TYPE_VNC_ETH)
     {
       snprintf(buf, size, "LHI:%d, %02x:%02x:%02x:%02x:%02x:%02x",
 	    *(pnt+1),	/* LHI */

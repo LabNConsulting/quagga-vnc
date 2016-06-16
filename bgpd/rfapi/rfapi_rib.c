@@ -1549,7 +1549,8 @@ rfapiRibUpdatePendingNode (
       /*
        * VN options
        */
-      if (bi->extra && (bi->extra->vnc.import.rd.val[0] == 0xff))
+      if (bi->extra && 
+          decode_rd_type(bi->extra->vnc.import.rd.val) == RD_TYPE_VNC_ETH)
         {
           /* ethernet route */
 
@@ -1579,7 +1580,7 @@ rfapiRibUpdatePendingNode (
         }
 
       /*
-       * If there is an auxiliary IP address (EoI can have it), copy it
+       * If there is an auxiliary IP address (L2 can have it), copy it
        */
       if (bi && bi->extra && bi->extra->vnc.import.aux_prefix.family)
         {

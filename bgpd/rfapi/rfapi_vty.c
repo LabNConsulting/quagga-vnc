@@ -605,7 +605,7 @@ rfapiPrintBi (void *stream, struct bgp_info *bi)
   if (bi->extra)
     {
       /* TBD This valid only for SAFI_MPLS_VPN, but not for encap */
-      if (bi->extra->vnc.import.rd.val[0] == 0xff)
+      if (decode_rd_type(bi->extra->vnc.import.rd.val) == RD_TYPE_VNC_ETH)
         {
           has_macaddr = 1;
           memcpy (macaddr.octet, bi->extra->vnc.import.rd.val + 2, 6);

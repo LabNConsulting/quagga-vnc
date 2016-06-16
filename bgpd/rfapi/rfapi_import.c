@@ -589,8 +589,8 @@ rfapiMacImportTableGet (struct bgp *bgp, uint32_t lni)
         XCALLOC (MTYPE_RFAPI_IMPORTTABLE, sizeof (struct rfapi_import_table));
       /* set RT list of new import table based on LNI */
       memset ((char *) &eval, 0, sizeof (eval));
-      eval.val[0] = 0;          /* EoI spec */
-      eval.val[1] = 2;          /* EoI spec */
+      eval.val[0] = 0;          /* VNC L2VPN */
+      eval.val[1] = 2;          /* VNC L2VPN */
       eval.val[5] = (lni >> 16) & 0xff;
       eval.val[6] = (lni >> 8) & 0xff;
       eval.val[7] = (lni >> 0) & 0xff;
@@ -1328,7 +1328,8 @@ rfapiRouteInfo2NextHopEntry (
 
   new->prefix = *rprefix;
 
-  if (bi->extra && (bi->extra->vnc.import.rd.val[0] == 0xff))
+  if (bi->extra && 
+      decode_rd_type(bi->extra->vnc.import.rd.val) == RD_TYPE_VNC_ETH)
     {
       /* ethernet */
 
@@ -1348,7 +1349,7 @@ rfapiRouteInfo2NextHopEntry (
                                         &vo->v.l2addr.logical_net_id);
         }
 
-      /* local_nve_id comes from RD */
+      /* local_nve_id comes from lower byte of RD type */
       vo->v.l2addr.local_nve_id = bi->extra->vnc.import.rd.val[1];
 
       /* label comes from MP_REACH_NLRI label */
@@ -3982,11 +3983,10 @@ rfapiProcessUpdate (
 
   /*
    * look at high-order byte of RD. FF means MAC
-   * address is present (see EoI spec)
-   *
-   * TBD also have to free this stuff at shutdown time
+   * address is present (VNC L2VPN)
    */
-  if ((safi == SAFI_MPLS_VPN) && (prd->val[0] == 0xff))
+  if ((safi == SAFI_MPLS_VPN) && 
+      (decode_rd_type(prd->val) == RD_TYPE_VNC_ETH))
     {
       struct prefix pfx_mac_buf;
       struct prefix pfx_nexthop_buf;
@@ -4111,9 +4111,10 @@ rfapiProcessWithdraw (
 
   /*
    * look at high-order byte of RD. FF means MAC
-   * address is present (see EoI spec)
+   * address is present (VNC L2VPN)
    */
-  if (h->import_mac != NULL && safi == SAFI_MPLS_VPN && prd->val[0] == 0xff)
+  if (h->import_mac != NULL && safi == SAFI_MPLS_VPN &&
+      decode_rd_type(prd->val) == RD_TYPE_VNC_ETH)
     {
       struct prefix pfx_mac_buf;
       void *cursor = NULL;

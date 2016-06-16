@@ -2711,7 +2711,7 @@ rfapi_register (
         {
           prd.family = AF_UNSPEC;
           prd.prefixlen = 64;
-          prd.val[0] = 0xff;
+          encode_rd_type(RD_TYPE_VNC_ETH, prd.val);
           if (l2o->local_nve_id || !(rfd->rfg->flags & RFAPI_RFG_L2RD))
             {
               /*
@@ -3710,7 +3710,7 @@ DEFUN (debug_rfapi_show_import,
   struct rfapi *h;
   struct rfapi_import_table *it;
   char *s;
-  int first_eoi = 1;
+  int first_l2 = 1;
 
   /*
    * Show all import tables
@@ -3768,13 +3768,13 @@ DEFUN (debug_rfapi_show_import,
           if (it->imported_vpn[AFI_ETHER])
             {
               lni = lni_as_ptr;
-              if (first_eoi)
+              if (first_l2)
                 {
                   vty_out (vty, "%sLNI-based Ethernet Tables:%s",
                            VTY_NEWLINE, VTY_NEWLINE);
-                  first_eoi = 0;
+                  first_l2 = 0;
                 }
-              snprintf (buf, BUFSIZ, "EoI LNI=%u", lni);
+              snprintf (buf, BUFSIZ, "L2VPN LNI=%u", lni);
               rfapiShowImportTable (vty, buf, it->imported_vpn[AFI_ETHER], 1);
             }
         }

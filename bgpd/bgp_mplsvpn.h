@@ -25,7 +25,7 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #define RD_TYPE_IP      1
 #define RD_TYPE_AS4     2
 #if ENABLE_BGP_VNC
-#define RD_TYPE_EOI	0xff00
+#define RD_TYPE_VNC_ETH	0xff00  /* VNC L2VPN */
 #endif
 
 #define RD_ADDRSTRLEN  28
@@ -70,6 +70,7 @@ struct rd_ip
 };
 
 extern u_int16_t decode_rd_type (u_char *);
+extern void encode_rd_type (u_int16_t, u_char *);
 extern void bgp_mplsvpn_init (void);
 extern int bgp_nlri_parse_vpn (struct peer *, struct attr *, struct bgp_nlri *);
 extern u_int32_t decode_label (u_char *);
