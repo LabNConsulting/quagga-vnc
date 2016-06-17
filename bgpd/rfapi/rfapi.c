@@ -631,6 +631,7 @@ add_vnc_route (
 
   struct attr attr = { 0 };
   struct attr *new_attr;
+  uint32_t    label_val;
 
   struct bgp_attr_encap_subtlv *encaptlv;
   char buf[BUFSIZ];
@@ -642,6 +643,7 @@ add_vnc_route (
   struct rfapi_nexthop *lnh = NULL;     /* local nexthop */
   struct rfapi_vn_option *vo;
   struct rfapi_l2address_option *l2o = NULL;
+  struct rfapi_ip_addr		*un_addr = &rfd->un_addr;
 
   bgp_encap_types TunnelType = BGP_ENCAP_TYPE_RESERVED;
 
@@ -686,6 +688,10 @@ add_vnc_route (
         }
     }
 
+  if (label)
+    label_val = *label;
+  else 
+    label_val = MPLS_LABEL_IMPLICIT_NULL;
 
   prefix_rd2str (prd, buf2, BUFSIZ);
   buf2[BUFSIZ - 1] = 0;
@@ -709,6 +715,59 @@ add_vnc_route (
    *  extra: dynamically allocated, owned by attr
    *  aspath: points to interned hash from aspath hash table
    */
+
+
+  /*
+   * Route-specific un_options get added to the VPN SAFI
+   * advertisement tunnel encap attribute.  (the per-NVE
+   * "default" un_options are put into the 1-per-NVE ENCAP
+   * SAFI advertisement). The VPN SAFI also gets the
+   * default un_options if there are no route-specific options.
+   */
+  if (options_un)
+    {
+      struct rfapi_un_option *uo;
+
+      for (uo = options_un; uo; uo = uo->next)
+        {
+          if (RFAPI_UN_OPTION_TYPE_TUNNELTYPE == uo->type)
+            {
+              TunnelType = rfapi_tunneltype_option_to_tlv (
+		bgp, un_addr, &uo->v.tunnel, &attr, l2o != NULL);
+            }
+        }
+    }
+  else
+    {
+      /*
+       * Add encap attr
+       * These are the NVE-specific "default" un_options which are
+       * put into the 1-per-NVE ENCAP advertisement.
+       */
+      if (rfd->default_tunneltype_option.type)
+        {
+          TunnelType = rfapi_tunneltype_option_to_tlv (
+	    bgp, un_addr, &rfd->default_tunneltype_option, &attr,
+	    l2o != NULL);
+        }
+      else
+        TunnelType = rfapi_tunneltype_option_to_tlv (
+	  bgp, un_addr, NULL,
+	  /* create one to carry un_addr */ &attr, l2o != NULL);
+    }
+
+  if (TunnelType == BGP_ENCAP_TYPE_MPLS)
+    {
+      if (safi == SAFI_ENCAP)
+        {
+          /* Encap SAFI not used with MPLS  */
+          zlog_debug ("%s: mpls tunnel type, encap safi omitted", __func__);
+          aspath_unintern (&attr.aspath);       /* Unintern original. */
+          bgp_attr_extra_free (&attr);
+          return;
+        }
+      nexthop = un_addr;    /* UN used as MPLS NLRI nexthop */
+    }
 
   if (local_pref)
     {
@@ -745,7 +804,7 @@ add_vnc_route (
     }
 
 
-  /* Set up Tunnel Encap attribute (sub-tlv for Prefix Lifetime) */
+  /* Set up vnc attribute (sub-tlv for Prefix Lifetime) */
   if (lifetime && *lifetime != BGP_VNC_LIFETIME_INFINITE)
     {
       uint32_t lt;
@@ -763,7 +822,7 @@ add_vnc_route (
                   __func__, *lifetime);
     }
 
-  /* add rfp options to Tunnel Encap attr */
+  /* add rfp options to vnc attr */
   if (rfp_options)
     {
 
@@ -827,46 +886,6 @@ add_vnc_route (
         }
     }
 
-  /*
-   * Route-specific un_options get added to the VPN SAFI
-   * advertisement tunnel encap attribute.  (the per-NVE
-   * "default" un_options are put into the 1-per-NVE ENCAP
-   * SAFI advertisement). The VPN SAFI also gets the
-   * default un_options if there are no route-specific options.
-   */
-  if (options_un)
-    {
-      struct rfapi_un_option *uo;
-
-      for (uo = options_un; uo; uo = uo->next)
-        {
-          if (RFAPI_UN_OPTION_TYPE_TUNNELTYPE == uo->type)
-            {
-              TunnelType = rfapi_tunneltype_option_to_tlv (
-		bgp, &rfd->un_addr, &uo->v.tunnel, &attr, l2o != NULL);
-            }
-
-        }
-    }
-  else
-    {
-      /*
-       * Add encap attr
-       * These are the NVE-specific "default" un_options which are
-       * put into the 1-per-NVE ENCAP advertisement.
-       */
-      if (rfd->default_tunneltype_option.type)
-        {
-          TunnelType = rfapi_tunneltype_option_to_tlv (
-	    bgp, &rfd->un_addr, &rfd->default_tunneltype_option, &attr,
-	    l2o != NULL);
-        }
-      else
-        TunnelType = rfapi_tunneltype_option_to_tlv (
-	  bgp, &rfd->un_addr, NULL,
-	  /* create one to carry un_addr */ &attr, l2o != NULL);
-    }
-
   /* 
    * At this point:
    * attr: static
@@ -879,17 +898,19 @@ add_vnc_route (
   attr.extra->ecommunity = ecommunity_new ();
   assert (attr.extra->ecommunity);
 
-  if ((safi == SAFI_ENCAP) && (TunnelType != BGP_ENCAP_TYPE_RESERVED))
+  if (TunnelType != BGP_ENCAP_TYPE_MPLS && 
+      TunnelType != BGP_ENCAP_TYPE_RESERVED)
     {
       /*
        * Add BGP Encapsulation Extended Community. Format described in
        * section 4.5 of RFC 5512.
+       * Always include when not MPLS type, to disambiguate this case.
        */
       struct ecommunity_val beec;
 
       memset (&beec, 0, sizeof (beec));
-      beec.val[0] = 0x03;
-      beec.val[1] = 0x0c;
+      beec.val[0] = ECOMMUNITY_ENCODE_OPAQUE;
+      beec.val[1] = ECOMMUNITY_OPAQUE_SUBTYPE_ENCAP;
       beec.val[6] = ((TunnelType) >> 8) & 0xff;
       beec.val[7] = (TunnelType) & 0xff;
       ecommunity_add_val (attr.extra->ecommunity, &beec);
@@ -1139,10 +1160,7 @@ add_vnc_route (
   /* save backref to rfapi handle */
   assert (bgp_info_extra_get (new));
   new->extra->vnc.export.rfapi_handle = (void *) rfd;
-  if (label)
-    encode_label (*label, new->extra->tag);
-  else
-    encode_label (MPLS_LABEL_IMPLICIT_NULL, new->extra->tag);
+  encode_label (label_val, new->extra->tag);
 
   /* debug */
   zlog_debug ("%s: printing BI", __func__);
@@ -1177,7 +1195,7 @@ done:
   /* Loop back to import tables */
   rfapiProcessUpdate (rfd->peer,
                       rfd,
-                      p, prd, new_attr, afi, safi, type, sub_type, label);
+                      p, prd, new_attr, afi, safi, type, sub_type, &label_val);
   zlog_debug ("%s: looped back import route (safi=%d)", __func__, safi);
 }
 

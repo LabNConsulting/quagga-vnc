@@ -1149,6 +1149,7 @@ rfapiPrintRemoteRegBi (
   struct prefix pfx_vn;
   uint8_t cost;
   uint32_t lifetime;
+  bgp_encap_types tun_type;
 
   char buf_pfx[BUFSIZ];
   char buf_ntop[BUFSIZ];
@@ -1178,6 +1179,7 @@ rfapiPrintRemoteRegBi (
             rn->p.prefixlen);
   buf_pfx[BUFSIZ - 1] = 0;
   nlines++;
+
   /*
    * UN addr
    */
@@ -1188,21 +1190,35 @@ rfapiPrintRemoteRegBi (
                 inet_ntop (pfx_un.family, &pfx_un.u.prefix, buf_ntop,
                            BUFSIZ));
     }
-  else
-    {
-      snprintf (buf_vn, BUFSIZ, "?");
-    }
   buf_un[BUFSIZ - 1] = 0;
 
+  rfapiGetTunnelType(bi->attr,&tun_type);
   /*
    * VN addr
    */
   buf_vn[0] = 0;
-  rfapiNexthop2Prefix (bi->attr, &pfx_vn);
-  snprintf (buf_vn, BUFSIZ, "%s",
-            inet_ntop (pfx_vn.family, &pfx_vn.u.prefix, buf_ntop, BUFSIZ));
+  if (tun_type == BGP_ENCAP_TYPE_MPLS)
+    {
+      /* MPLS carries un in nrli next hop (same as vn for IP tunnels) */
+      if (bi->extra)
+        {
+          u_int32_t l = decode_label (bi->extra->tag);
+          snprintf (buf_vn, BUFSIZ, "Label: %d", l);
+        }
+      else                      /* should never happen */
+        {
+          snprintf (buf_vn, BUFSIZ, "Label: N/A");
+        }
+    }
+  else
+    {
+      rfapiNexthop2Prefix (bi->attr, &pfx_vn);
+      snprintf (buf_vn, BUFSIZ, "%s",
+                inet_ntop (pfx_vn.family, &pfx_vn.u.prefix, buf_ntop, BUFSIZ));
+    }
   buf_vn[BUFSIZ - 1] = 0;
 
+  
   /*
    * Cost is encoded in local_pref as (255-cost)
    * See rfapi_import.c'rfapiRouteInfo2NextHopEntry() for conversion
@@ -1312,7 +1328,7 @@ rfapiPrintRemoteRegBi (
             }
         }
     }
-  if (bi->extra)
+  if (tun_type != BGP_ENCAP_TYPE_MPLS && bi->extra)
     {
       u_int32_t l = decode_label (bi->extra->tag);
       if (!MPLS_LABEL_IS_NULL (l))

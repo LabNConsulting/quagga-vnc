@@ -337,6 +337,9 @@ extern int
 rfapiGetVncLifetime (struct attr *attr, uint32_t * lifetime);
 
 extern int
+rfapiGetTunnelType (struct attr *attr, bgp_encap_types *type);
+
+extern int
 rfapiGetVncTunnelUnAddr (struct attr *attr, struct prefix *p);
 
 extern int
