@@ -118,7 +118,6 @@ vnc_redistribute_add (
         }
       vnaddr.addr.v4 = bgp->rfapi_cfg->rfg_redist->vn_prefix.u.prefix4;
       break;
-#ifdef HAVE_IPV6
     case AF_INET6:
       if (bgp->rfapi_cfg->rfg_redist->vn_prefix.prefixlen != 128)
         {
@@ -129,7 +128,6 @@ vnc_redistribute_add (
         }
       vnaddr.addr.v6 = bgp->rfapi_cfg->rfg_redist->vn_prefix.u.prefix6;
       break;
-#endif
     default:
       zlog_debug
         ("%s: no redist nve group VN host prefix configured, skipping",
@@ -163,7 +161,6 @@ vnc_redistribute_add (
             return;
           }
         break;
-#ifdef HAVE_IPV6
       case AF_INET6:
         if (pfx_un.length != 128)
           {
@@ -173,7 +170,6 @@ vnc_redistribute_add (
             return;
           }
         break;
-#endif
       default:
         zlog_debug
           ("%s: no redist nve group UN host prefix configured, skipping",
@@ -427,7 +423,6 @@ vnc_zebra_read_ipv4 (
   return 0;
 }
 
-#ifdef HAVE_IPV6
 /* Zebra route add and delete treatment. */
 static int
 vnc_zebra_read_ipv6 (
@@ -508,8 +503,6 @@ vnc_zebra_read_ipv6 (
 
   return 0;
 }
-#endif /* HAVE_IPV6 */
-
 
 /***********************************************************************
  *	vnc_bgp_zebra_*: VNC sends updates/withdraws to Zebra
@@ -560,7 +553,6 @@ vnc_zebra_route_msg (
                         ZEBRA_IPV4_NEXTHOP_DELETE), zclient_vnc,
                        (struct prefix_ipv4 *) p, &api);
 
-#ifdef HAVE_IPV6
     }
   else if (p->family == AF_INET6)
     {
@@ -594,8 +586,6 @@ vnc_zebra_route_msg (
       zapi_ipv6_route ((add ? ZEBRA_IPV6_NEXTHOP_ADD :
                         ZEBRA_IPV6_NEXTHOP_DELETE), zclient_vnc,
                        (struct prefix_ipv6 *) p, &api);
-
-#endif
     }
   else
     {
@@ -666,7 +656,6 @@ nve_list_to_nh_array (
         }
 
     }
-#ifdef HAVE_IPV6
   else if (family == AF_INET6)
     {
 
@@ -698,7 +687,6 @@ nve_list_to_nh_array (
           ++*nh_count_ret;
         }
     }
-#endif /* HAVE_IPV6 */
 }
 
 static void
@@ -754,10 +742,7 @@ vnc_zebra_add_del_prefix (
     return;
 
   if (rn->p.family != AF_INET
-#ifdef HAVE_IPV6
-      && rn->p.family != AF_INET6
-#endif
-    )
+      && rn->p.family != AF_INET6)
     {
       zlog_err ("%s: invalid route node addr family", __func__);
       return;
@@ -937,10 +922,7 @@ vnc_zebra_add_del_group_afi (
     }
 
   if (afi == AFI_IP
-#ifdef HAVE_IPV6
-      || afi == AFI_IP6
-#endif
-    )
+      || afi == AFI_IP6)
     {
       rt = import_table->imported_vpn[afi];
     }
@@ -1124,10 +1106,8 @@ vnc_zebra_init (struct thread_master *master)
 
   zclient_vnc->ipv4_route_add = vnc_zebra_read_ipv4;
   zclient_vnc->ipv4_route_delete = vnc_zebra_read_ipv4;
-#ifdef HAVE_IPV6
   zclient_vnc->ipv6_route_add = vnc_zebra_read_ipv6;
   zclient_vnc->ipv6_route_delete = vnc_zebra_read_ipv6;
-#endif /* HAVE_IPV6 */
 }
 
 void

@@ -33,7 +33,6 @@
 #include "../bgp_encap_types.h"
 
 /* probably ought to have a field-specific define in config.h */
-#ifdef HAVE_IPV6
 # ifndef s6_addr32              /* for solaris/bsd */
 #  ifdef SOLARIS_IPV6
 #   define	s6_addr32	_S6_un._S6_u32
@@ -41,7 +40,6 @@
 #   define	s6_addr32	__u6_addr.__u6_addr32
 #  endif
 # endif
-#endif /* HAVE_IPV6 */
 
 #define RFAPI_V4_ADDR 0x04
 #define RFAPI_V6_ADDR 0x06

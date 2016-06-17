@@ -448,7 +448,6 @@ rfapiGetUnAddrOfVpnBi (struct bgp_info *bi, struct prefix *p)
               p->prefixlen = 32;
             }
           return 0;
-#ifdef HAVE_IPV6
         case AF_INET6:
           if (p)
             {
@@ -457,7 +456,6 @@ rfapiGetUnAddrOfVpnBi (struct bgp_info *bi, struct prefix *p)
               p->prefixlen = 128;
             }
           return 0;
-#endif
         default:
           if (p)
             p->family = 0;
@@ -1110,12 +1108,10 @@ rfapiVpnBiNhEqualsPt (struct bgp_info *bi, struct rfapi_ip_addr *hpt)
         return 0;
       break;
 
-#ifdef HAVE_IPV6
     case AF_INET6:
       if (IPV6_ADDR_CMP (&bi->attr->extra->mp_nexthop_global, &hpt->addr.v6))
         return 0;
       break;
-#endif
 
     default:
       return 0;
@@ -1163,13 +1159,11 @@ rfapiVpnBiSamePtUn (struct bgp_info *bi1, struct bgp_info *bi2)
         return 0;
       break;
 
-#ifdef HAVE_IPV6
     case AF_INET6:
       if (IPV6_ADDR_CMP (&bi1->attr->extra->mp_nexthop_global,
                          &bi2->attr->extra->mp_nexthop_global))
         return 0;
       break;
-#endif
 
     default:
       return 0;
@@ -1189,11 +1183,9 @@ rfapiVpnBiSamePtUn (struct bgp_info *bi1, struct bgp_info *bi2)
             case AF_INET:
               pfx_un1.u.prefix4 = bi1->extra->vnc.import.un.addr4;
               break;
-#ifdef HAVE_IPV6
             case AF_INET6:
               pfx_un1.u.prefix6 = bi1->extra->vnc.import.un.addr6;
               break;
-#endif
             default:
               pfx_un1.family = 0;
               break;
@@ -1211,11 +1203,9 @@ rfapiVpnBiSamePtUn (struct bgp_info *bi1, struct bgp_info *bi2)
             case AF_INET:
               pfx_un2.u.prefix4 = bi2->extra->vnc.import.un.addr4;
               break;
-#ifdef HAVE_IPV6
             case AF_INET6:
               pfx_un2.u.prefix6 = bi2->extra->vnc.import.un.addr6;
               break;
-#endif
             default:
               pfx_un2.family = 0;
               break;
@@ -1236,12 +1226,10 @@ rfapiVpnBiSamePtUn (struct bgp_info *bi1, struct bgp_info *bi2)
           (&pfx_un1.u.prefix4.s_addr, &pfx_un2.u.prefix4.s_addr))
         return 0;
       break;
-#ifdef HAVE_IPV6
     case AF_INET6:
       if (!IPV6_ADDR_SAME (&pfx_un1.u.prefix6, &pfx_un2.u.prefix6))
         return 0;
       break;
-#endif
     }
 
 
@@ -1384,12 +1372,10 @@ rfapiRouteInfo2NextHopEntry (
               new->vn_address.addr.v4 = bi->attr->extra->mp_nexthop_global_in;
               break;
 
-#ifdef HAVE_IPV6
             case AF_INET6:
               new->vn_address.addr_family = AF_INET6;
               new->vn_address.addr.v6 = bi->attr->extra->mp_nexthop_global;
               break;
-#endif
 
             default:
               zlog_warn ("%s: invalid vpn nexthop length: %d",
@@ -1474,11 +1460,9 @@ rfapiRouteInfo2NextHopEntry (
                 case AF_INET:
                   new->un_address.addr.v4 = bi->extra->vnc.import.un.addr4;
                   break;
-#ifdef HAVE_IPV6
                 case AF_INET6:
                   new->un_address.addr.v6 = bi->extra->vnc.import.un.addr6;
                   break;
-#endif
                 default:
                   zlog_warn ("%s: invalid UN addr family (%d) for bi %p",
                              __func__, new->un_address.addr_family, bi);
@@ -2565,10 +2549,8 @@ rfapiNexthop2Prefix (struct attr *attr, struct prefix *p)
       break;
 
     case AF_INET6:
-#ifdef HAVE_IPV6
       p->u.prefix6 = attr->extra->mp_nexthop_global;
       p->prefixlen = 128;
-#endif
       break;
 
     default:
@@ -2616,10 +2598,8 @@ rfapiAttrNexthopAddrDifferent (struct prefix *p1, struct prefix *p2)
       break;
 
     case AF_INET6:
-#ifdef HAVE_IPV6
       if (IPV6_ADDR_SAME (&p1->u.prefix6, &p2->u.prefix6))
         return 0;
-#endif
       break;
 
     default:
@@ -2668,12 +2648,10 @@ rfapiCopyUnEncap2VPN (struct bgp_info *encap_bi, struct bgp_info *vpn_bi)
       vpn_bi->extra->vnc.import.un.addr4 = attre->mp_nexthop_global_in;
       break;
 
-#ifdef HAVE_IPV6
     case AF_INET6:
       vpn_bi->extra->vnc.import.un_family = AF_INET6;
       vpn_bi->extra->vnc.import.un.addr6 = attre->mp_nexthop_global;
       break;
-#endif
 
     default:
       zlog_warn ("%s: invalid encap nexthop length: %d",
@@ -2962,13 +2940,11 @@ rfapiGetNexthop (struct attr *attr, struct prefix *prefix)
       prefix->prefixlen = 32;
       prefix->u.prefix4 = attr->extra->mp_nexthop_global_in;
       break;
-#ifdef HAVE_IPV6
     case AF_INET6:
       prefix->family = AF_INET6;
       prefix->prefixlen = 128;
       prefix->u.prefix6 = attr->extra->mp_nexthop_global;
       break;
-#endif
     default:
       zlog_debug ("%s: unknown attr->extra->mp_nexthop_len %d", __func__,
                   attr->extra->mp_nexthop_len);

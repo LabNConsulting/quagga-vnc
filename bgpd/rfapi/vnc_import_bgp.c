@@ -127,11 +127,8 @@ is_host_prefix (struct prefix *p)
     {
     case AF_INET:
       return (p->prefixlen == 32);
-
-#ifdef HAVE_IPV6
     case AF_INET6:
       return (p->prefixlen == 128);
-#endif
     }
   return 0;
 }
@@ -1207,7 +1204,6 @@ vnc_import_bgp_del_route_mode_plain (struct bgp *bgp,
       vnaddr.addr.v4 = vn_pfx->u.prefix4;
       break;
 
-#ifdef HAVE_IPV6
     case AF_INET6:
       if (vn_pfx->prefixlen != 128)
         {
@@ -1217,7 +1213,6 @@ vnc_import_bgp_del_route_mode_plain (struct bgp *bgp,
         }
       vnaddr.addr.v6 = vn_pfx->u.prefix6;
       break;
-#endif
 
     default:
       zlog_debug ("%s: no redist RFG VN host pfx configured, skipping",
@@ -1286,7 +1281,6 @@ vnc_import_bgp_del_route_mode_nvegroup (struct bgp *bgp,
       vnaddr.addr.v4 = vn_pfx->u.prefix4;
       break;
 
-#ifdef HAVE_IPV6
     case AF_INET6:
       if (vn_pfx->prefixlen != 128)
         {
@@ -1296,7 +1290,6 @@ vnc_import_bgp_del_route_mode_nvegroup (struct bgp *bgp,
         }
       vnaddr.addr.v6 = vn_pfx->u.prefix6;
       break;
-#endif
 
     default:
       zlog_debug ("%s: no redist RFG VN host pfx configured, skipping",

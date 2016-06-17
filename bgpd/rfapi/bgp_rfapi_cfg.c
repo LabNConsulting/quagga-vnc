@@ -101,11 +101,9 @@ bgp_rfapi_cfg_match_group (
     case AF_INET:
       rt_vn = &(hc->nve_groups_vn[AFI_IP]);
       break;
-#ifdef HAVE_IPV6
     case AF_INET6:
       rt_vn = &(hc->nve_groups_vn[AFI_IP6]);
       break;
-#endif
     default:
       return NULL;
     }
@@ -115,11 +113,9 @@ bgp_rfapi_cfg_match_group (
     case AF_INET:
       rt_un = &(hc->nve_groups_un[AFI_IP]);
       break;
-#ifdef HAVE_IPV6
     case AF_INET6:
       rt_un = &(hc->nve_groups_un[AFI_IP6]);
       break;
-#endif
     default:
       return NULL;
     }

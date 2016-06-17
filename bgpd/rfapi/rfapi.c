@@ -196,12 +196,11 @@ rfapi_ip_addr_cmp (struct rfapi_ip_addr *a1, struct rfapi_ip_addr *a2)
       return IPV4_ADDR_CMP (&a1->addr.v4, &a2->addr.v4);
     }
 
-#ifdef HAVE_IPV6
   if (a1->addr_family == AF_INET6)
     {
       return IPV6_ADDR_CMP (&a1->addr.v6, &a2->addr.v6);
     }
-#endif
+
   assert (1);
   /* NOTREACHED */
   return 1;
@@ -940,12 +939,12 @@ add_vnc_route (
       attr.extra->mp_nexthop_global_in = nexthop->addr.v4;
       attr.extra->mp_nexthop_len = 4;
       break;
-#ifdef HAVE_IPV6
+
     case AF_INET6:
       attr.extra->mp_nexthop_global = nexthop->addr.v6;
       attr.extra->mp_nexthop_len = 16;
       break;
-#endif
+
     default:
       assert (0);
     }
@@ -2074,10 +2073,7 @@ rfapi_open (
    * Check here so we don't need to unwind memory allocations, &c.
    */
   if ((rfg->rd.family == AF_UNIX) && (vn->addr_family != AF_INET)
-#ifdef HAVE_IPV6
-      && (vn->addr_family != AF_INET6)
-#endif
-    )
+      && (vn->addr_family != AF_INET6))
     {
       return EAFNOSUPPORT;
     }
@@ -2741,14 +2737,12 @@ rfapi_register (
                     {
                       prd.val[1] =
                         *(((char *) &rfd->vn_addr.addr.v4.s_addr) + 3);
-#ifdef HAVE_IPV6
                     }
                   else
                     {
                       prd.val[1] =
                         *(((char *) &rfd->vn_addr.addr.v6.s6_addr) + 15);
                     }
-#endif
                 }
             }
           memcpy (prd.val + 2, pfx_mac->u.prefix_eth.octet, 6);
@@ -4010,15 +4004,10 @@ rfapi_set_autord_from_vn (struct prefix_rd *rd, struct rfapi_ip_addr *vn)
 {
   zlog_debug ("%s: auto-assigning RD", __func__);
   if (vn->addr_family != AF_INET
-#ifdef HAVE_IPV6
-      && vn->addr_family != AF_INET6
-#endif
-    )
+      && vn->addr_family != AF_INET6)
     {
       zlog_debug ("%s: can't auto-assign RD, VN addr family is not IPv4"
-#ifdef HAVE_IPV6
                   "|v6"
-#endif
                   , __func__);
       return EAFNOSUPPORT;
     }
@@ -4029,12 +4018,10 @@ rfapi_set_autord_from_vn (struct prefix_rd *rd, struct rfapi_ip_addr *vn)
     {
       memcpy (rd->val + 2, &vn->addr.v4.s_addr, 4);
     }
-#ifdef HAVE_IPV6
   else
     {                           /* is v6 */
       memcpy (rd->val + 2, &vn->addr.v6.s6_addr32[3], 4);/* low order 4 bytes */
     }
-#endif
   {
     char buf[BUFSIZ];
     buf[0] = 0;

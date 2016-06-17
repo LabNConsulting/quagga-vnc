@@ -91,7 +91,6 @@ rfapi_nve_addr_cmp (void *k1, void *k2)
 #endif
           return ret;
         }
-#ifdef HAVE_IPV6
     }
   else if (a->un.addr_family == AF_INET6)
     {
@@ -103,7 +102,6 @@ rfapi_nve_addr_cmp (void *k1, void *k2)
 #endif
           return ret;
         }
-#endif
     }
   else
     {
@@ -127,7 +125,6 @@ rfapi_nve_addr_cmp (void *k1, void *k2)
 #endif
           return ret;
         }
-#ifdef HAVE_IPV6
     }
   else if (a->vn.addr_family == AF_INET6)
     {
@@ -139,7 +136,6 @@ rfapi_nve_addr_cmp (void *k1, void *k2)
 #endif
           return ret;
         }
-#endif
     }
   else
     {

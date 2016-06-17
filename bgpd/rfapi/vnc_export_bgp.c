@@ -90,7 +90,6 @@ encap_attr_export_ce (
       new->flag |= ATTR_FLAG_BIT (BGP_ATTR_NEXT_HOP);
       break;
 
-#ifdef HAVE_IPV6
     case AF_INET6:
       if (!new->extra)
         {
@@ -99,7 +98,6 @@ encap_attr_export_ce (
       new->extra->mp_nexthop_global = use_nexthop->u.prefix6;
       new->extra->mp_nexthop_len = 16;  /* bytes */
       break;
-#endif
 
     default:
       assert (0);
@@ -451,10 +449,7 @@ vnc_direct_bgp_vpn_enable_ce (struct bgp *bgp, afi_t afi)
     }
 
   if (afi != AFI_IP
-#ifdef HAVE_IPV6
-      && afi != AFI_IP6
-#endif
-    )
+      && afi != AFI_IP6)
     {
       zlog_debug ("%s: bad afi: %d", __func__, afi);
       return;
@@ -507,10 +502,7 @@ vnc_direct_bgp_vpn_disable_ce (struct bgp *bgp, afi_t afi)
     return;
 
   if (afi != AFI_IP
-#ifdef HAVE_IPV6
-      && afi != AFI_IP6
-#endif
-    )
+      && afi != AFI_IP6)
     {
       zlog_debug ("%s: bad afi: %d", __func__, afi);
       return;
@@ -581,11 +573,9 @@ vnc_route_origin_ecom (struct route_node *rn)
           roec.val[7] = 0;
           ecommunity_add_val (new, &roec);
           break;
-#ifdef HAVE_IPV6
         case AF_INET6:
           /* No support for IPv6 addresses in extended communities */
           break;
-#endif
         }
     }
 
@@ -655,13 +645,11 @@ encap_attr_export (
         {
           orig_nexthop.prefixlen = 32;
           orig_nexthop.u.prefix4 = orig->extra->mp_nexthop_global_in;
-#ifdef HAVE_IPV6
         }
       else if (orig_nexthop.family == AF_INET6)
         {
           orig_nexthop.prefixlen = 128;
           orig_nexthop.u.prefix6 = orig->extra->mp_nexthop_global;
-#endif
         }
       else
         {
@@ -687,7 +675,6 @@ encap_attr_export (
       new->flag |= ATTR_FLAG_BIT (BGP_ATTR_NEXT_HOP);
       break;
 
-#ifdef HAVE_IPV6
     case AF_INET6:
       if (!new->extra)
         {
@@ -696,7 +683,6 @@ encap_attr_export (
       new->extra->mp_nexthop_global = use_nexthop->u.prefix6;
       new->extra->mp_nexthop_len = 16;  /* bytes */
       break;
-#endif
 
     default:
       assert (0);
@@ -1087,10 +1073,7 @@ vnc_direct_bgp_add_nve (struct bgp *bgp, struct rfapi_descriptor *rfd)
           /* TBD set some configured med, see add_vnc_route() */
 
           if (afi == AFI_IP
-#ifdef HAVE_IPV6
-              || afi == AFI_IP6
-#endif
-            )
+              || afi == AFI_IP6)
             {
               rt = import_table->imported_vpn[afi];
             }
@@ -1232,10 +1215,7 @@ vnc_direct_bgp_del_nve (struct bgp *bgp, struct rfapi_descriptor *rfd)
           import_table = rfg->rfapi_import_table;
 
           if (afi == AFI_IP
-#ifdef HAVE_IPV6
-              || afi == AFI_IP6
-#endif
-            )
+              || afi == AFI_IP6)
             {
               rt = import_table->imported_vpn[afi];
             }
@@ -1298,10 +1278,7 @@ vnc_direct_bgp_add_group_afi (
     }
 
   if (afi == AFI_IP
-#ifdef HAVE_IPV6
-      || afi == AFI_IP6
-#endif
-    )
+      || afi == AFI_IP6)
     {
       rt = import_table->imported_vpn[afi];
     }
@@ -1412,9 +1389,7 @@ void
 vnc_direct_bgp_add_group (struct bgp *bgp, struct rfapi_nve_group_cfg *rfg)
 {
   vnc_direct_bgp_add_group_afi (bgp, rfg, AFI_IP);
-#ifdef HAVE_IPV6
   vnc_direct_bgp_add_group_afi (bgp, rfg, AFI_IP6);
-#endif
 }
 
 
@@ -1443,10 +1418,7 @@ vnc_direct_bgp_del_group_afi (
     }
 
   assert (afi == AFI_IP
-#ifdef HAVE_IPV6
-          || afi == AFI_IP6
-#endif
-    );
+          || afi == AFI_IP6);
   rt = import_table->imported_vpn[afi];
 
   if (!rfg->nves)
@@ -1497,9 +1469,7 @@ void
 vnc_direct_bgp_del_group (struct bgp *bgp, struct rfapi_nve_group_cfg *rfg)
 {
   vnc_direct_bgp_del_group_afi (bgp, rfg, AFI_IP);
-#ifdef HAVE_IPV6
   vnc_direct_bgp_del_group_afi (bgp, rfg, AFI_IP6);
-#endif
 }
 
 void
@@ -1617,10 +1587,7 @@ vnc_direct_bgp_vpn_enable (struct bgp *bgp, afi_t afi)
     }
 
   if (afi != AFI_IP
-#ifdef HAVE_IPV6
-      && afi != AFI_IP6
-#endif
-    )
+      && afi != AFI_IP6)
     {
       zlog_debug ("%s: bad afi: %d", __func__, afi);
       return;
@@ -1660,10 +1627,7 @@ vnc_direct_bgp_vpn_disable (struct bgp *bgp, afi_t afi)
     }
 
   if (!family || (afi != AFI_IP
-#ifdef HAVE_IPV6
-                  && afi != AFI_IP6
-#endif
-      ))
+                  && afi != AFI_IP6))
     {
       zlog_debug ("%s: bad afi: %d", __func__, afi);
       return;
@@ -1911,10 +1875,7 @@ vnc_direct_bgp_rh_vpn_enable (struct bgp *bgp, afi_t afi)
     }
 
   if (afi != AFI_IP
-#ifdef HAVE_IPV6
-      && afi != AFI_IP6
-#endif
-    )
+      && afi != AFI_IP6)
     {
       zlog_debug ("%s: bad afi: %d", __func__, afi);
       return;
@@ -2065,10 +2026,7 @@ vnc_direct_bgp_rh_vpn_disable (struct bgp *bgp, afi_t afi)
     return;
 
   if (afi != AFI_IP
-#ifdef HAVE_IPV6
-      && afi != AFI_IP6
-#endif
-    )
+      && afi != AFI_IP6)
     {
       zlog_debug ("%s: bad afi: %d", __func__, afi);
       return;

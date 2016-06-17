@@ -161,7 +161,6 @@ rfapiRprefixApplyMask (struct rfapi_ip_prefix *rprefix)
         }
       break;
 
-#ifdef HAVE_IPV6
     case AF_INET6:
       index = rprefix->length / 8;
       if (index < 16)
@@ -174,7 +173,7 @@ rfapiRprefixApplyMask (struct rfapi_ip_prefix *rprefix)
             pnt[index++] = 0;
         }
       break;
-#endif
+
     default:
       assert (0);
     }
@@ -201,13 +200,11 @@ rfapiQprefix2Raddr (struct prefix *qprefix, struct rfapi_ip_addr *raddr)
         return -1;
       raddr->addr.v4 = qprefix->u.prefix4;
       break;
-#ifdef HAVE_IPV6
     case AF_INET6:
       if (qprefix->prefixlen != 128)
         return -1;
       raddr->addr.v6 = qprefix->u.prefix6;
       break;
-#endif
     default:
       return -1;
     }
@@ -229,11 +226,9 @@ rfapiQprefix2Rprefix (struct prefix *qprefix, struct rfapi_ip_prefix *rprefix)
     case AF_INET:
       rprefix->prefix.addr.v4 = qprefix->u.prefix4;
       break;
-#ifdef HAVE_IPV6
     case AF_INET6:
       rprefix->prefix.addr.v6 = qprefix->u.prefix6;
       break;
-#endif
     default:
       assert (0);
     }
@@ -251,11 +246,9 @@ rfapiRprefix2Qprefix (struct rfapi_ip_prefix *rprefix, struct prefix *qprefix)
     case AF_INET:
       qprefix->u.prefix4 = rprefix->prefix.addr.v4;
       break;
-#ifdef HAVE_IPV6
     case AF_INET6:
       qprefix->u.prefix6 = rprefix->prefix.addr.v6;
       break;
-#endif
     default:
       return EAFNOSUPPORT;
     }
@@ -279,11 +272,9 @@ rfapiRprefixSame (struct rfapi_ip_prefix *hp1, struct rfapi_ip_prefix *hp2)
   if (hp1->prefix.addr_family == AF_INET)
     if (IPV4_ADDR_SAME (&hp1->prefix.addr.v4, &hp2->prefix.addr.v4))
       return 1;
-#ifdef HAVE_IPV6
   if (hp1->prefix.addr_family == AF_INET6)
     if (IPV6_ADDR_SAME (&hp1->prefix.addr.v6, &hp2->prefix.addr.v6))
       return 1;
-#endif
   return 0;
 }
 
@@ -299,12 +290,10 @@ rfapiRaddr2Qprefix (struct rfapi_ip_addr *hia, struct prefix *pfx)
       pfx->prefixlen = 32;
       pfx->u.prefix4 = hia->addr.v4;
       break;
-#ifdef HAVE_IPV6
     case AF_INET6:
       pfx->prefixlen = 128;
       pfx->u.prefix6 = hia->addr.v6;
       break;
-#endif
     default:
       return EAFNOSUPPORT;
     }
@@ -636,7 +625,6 @@ rfapiPrintBi (void *stream, struct bgp_info *bi)
                                                     &bi->attr->extra->mp_nexthop_global_in,
                                                     buf, BUFSIZ));
           INCP;
-#if HAVE_IPV6
         }
       else if (af == AF_INET6)
         {
@@ -644,7 +632,6 @@ rfapiPrintBi (void *stream, struct bgp_info *bi)
                                                     &bi->attr->extra->mp_nexthop_global,
                                                     buf, BUFSIZ));
           INCP;
-#endif
         }
       else
         {
@@ -1630,11 +1617,9 @@ rfapiRfapiIpAddr2Str (struct rfapi_ip_addr *a, char *buf, int bufsize)
     case AF_INET:
       rc = inet_ntop (a->addr_family, &a->addr.v4, buf, bufsize);
       break;
-#ifdef HAVE_IPV6
     case AF_INET6:
       rc = inet_ntop (a->addr_family, &a->addr.v6, buf, bufsize);
       break;
-#endif
     }
   return rc;
 }
@@ -1670,11 +1655,9 @@ rfapiRfapiIpPrefix2Str (struct rfapi_ip_prefix *p, char *buf, int bufsize)
     case AF_INET:
       rc = inet_ntop (a->addr_family, &a->addr.v4, buf, bufsize);
       break;
-#ifdef HAVE_IPV6
     case AF_INET6:
       rc = inet_ntop (a->addr_family, &a->addr.v6, buf, bufsize);
       break;
-#endif
     }
 
   if (rc)
@@ -1969,7 +1952,6 @@ rfapiCliGetPrefixAddr (struct vty *vty, const char *str, struct prefix *p)
           return CMD_WARNING;
         }
       break;
-#ifdef HAVE_IPV6
     case AF_INET6:
       if (p->prefixlen != 128)
         {
@@ -1977,7 +1959,6 @@ rfapiCliGetPrefixAddr (struct vty *vty, const char *str, struct prefix *p)
           return CMD_WARNING;
         }
       break;
-#endif
     default:
       vty_out (vty, "Invalid address \"%s\"%s", str, HVTY_NEWLINE);
       return CMD_WARNING;
@@ -2001,10 +1982,8 @@ rfapiCliGetRfapiIpAddr (
   hai->addr_family = pfx.family;
   if (pfx.family == AF_INET)
     hai->addr.v4 = pfx.u.prefix4;
-#ifdef HAVE_IPV6
   else
     hai->addr.v6 = pfx.u.prefix6;
-#endif
 
   return 0;
 }
@@ -2319,10 +2298,7 @@ register_add (
            goto fail;
          }
        if (pfx.family != AF_INET
-#ifdef HAVE_IPV6
-           && pfx.family != AF_INET6
-#endif
-         )
+           && pfx.family != AF_INET6)
          {
            vty_out (vty, "prefix \"%s\" has invalid address family%s",
                     arg_prefix, VTY_NEWLINE);
@@ -3088,7 +3064,6 @@ nve_addr_cmp (void *k1, void *k2)
           return ret;
         }
     }
-#ifdef HAVE_IPV6
   else if (a->un.addr_family == AF_INET6)
     {
       ret = IPV6_ADDR_CMP (&a->un.addr.v6, &b->un.addr.v6);
@@ -3097,7 +3072,6 @@ nve_addr_cmp (void *k1, void *k2)
           return ret;
         }
     }
-#endif
   else
     {
       assert (0);
@@ -3108,7 +3082,6 @@ nve_addr_cmp (void *k1, void *k2)
       if (ret != 0)
         return ret;
     }
-#ifdef HAVE_IPV6
   else if (a->vn.addr_family == AF_INET6)
     {
       ret = IPV6_ADDR_CMP (&a->vn.addr.v6, &b->vn.addr.v6);
@@ -3117,7 +3090,6 @@ nve_addr_cmp (void *k1, void *k2)
           return ret;
         }
     }
-#endif
   else
     {
       assert (0);

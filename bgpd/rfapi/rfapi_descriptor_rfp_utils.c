@@ -98,11 +98,9 @@ rfapi_compare_rfds (void *rfd1, void *rfd2)
       if (rrfd1->vn_addr.addr_family == AF_INET)
         match = IPV4_ADDR_SAME (&(rrfd1->vn_addr.addr.v4),
                                 &(rrfd2->vn_addr.addr.v4));
-#ifdef HAVE_IPV6
       else
         match = IPV6_ADDR_SAME (&(rrfd1->vn_addr.addr.v6),
                                 &(rrfd2->vn_addr.addr.v6));
-#endif
     }
 
   /* 
@@ -125,12 +123,9 @@ rfapi_compare_rfds (void *rfd1, void *rfd2)
       if (rrfd1->un_addr.addr_family == AF_INET)
         match = IPV4_ADDR_SAME (&(rrfd1->un_addr.addr.v4),
                                 &(rrfd2->un_addr.addr.v4));
-#ifdef HAVE_IPV6
       else
         match = IPV6_ADDR_SAME (&(rrfd1->un_addr.addr.v6),
                                 &(rrfd2->un_addr.addr.v6));
-#endif
-
     }
   return match;
 }

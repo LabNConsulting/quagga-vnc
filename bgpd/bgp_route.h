@@ -56,9 +56,7 @@ struct bgp_info_extra
 	  u_char un_family;	/* family of cached un address, 0 if unset */
 	  union {
 	    struct in_addr addr4;
-#ifdef HAVE_IPV6
 	    struct in6_addr addr6;
-#endif
 	  } un;			/* cached un address */
 	  time_t create_time;
 	  struct prefix aux_prefix; /* AFI_ETHER: the IP addr, if family set */

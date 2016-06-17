@@ -263,30 +263,19 @@ struct rfapi
     --(rfapi)->rib_prefix_count_total;					\
     } while (0)
 
-#ifdef HAVE_IPV6
 #define RFAPI_0_PREFIX(prefix) (					\
     (((prefix)->family == AF_INET)? (prefix)->u.prefix4.s_addr == 0:	\
     (((prefix)->family == AF_INET6)?					\
 	 (IN6_IS_ADDR_UNSPECIFIED(&(prefix)->u.prefix6)) : 0))			\
 )
-#else
-#define RFAPI_0_PREFIX(prefix) (	\
-    (prefix)->u.prefix4.s_addr == 0 \
-)
-#endif
 
 #define RFAPI_0_ETHERADDR(ea) (						\
     ((ea)->octet[0] | (ea)->octet[1] | (ea)->octet[2] |			\
     (ea)->octet[3] | (ea)->octet[4] | (ea)->octet[5]) == 0)
 
-#ifdef HAVE_IPV6
 #define RFAPI_HOST_PREFIX(prefix) (					\
     ((prefix)->family == AF_INET)? ((prefix)->prefixlen == 32):		\
     (((prefix)->family == AF_INET6)? ((prefix)->prefixlen == 128): 0) )
-#else
-#define RFAPI_HOST_PREFIX(prefix) (					\
-    ((prefix)->family == AF_INET)? ((prefix)->prefixlen == 32): 0)
-#endif
 
 /* These should go in a file such as vnc.h */
 #define BGP_VNC_LIFETIME_INFINITE	0xffffffff
