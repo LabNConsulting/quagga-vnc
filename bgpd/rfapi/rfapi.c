@@ -636,7 +636,9 @@ add_vnc_route (
   struct bgp_attr_encap_subtlv *encaptlv;
   char buf[BUFSIZ];
   char buf2[BUFSIZ];
+#if 0   /* unused? */
   struct prefix pfx_buf;
+#endif
 
   struct rfapi_nexthop *lnh = NULL;     /* local nexthop */
   struct rfapi_vn_option *vo;
@@ -657,6 +659,7 @@ add_vnc_route (
       return;
     }
 
+#if 0   /* unused? */
   if ((safi == SAFI_MPLS_VPN) && (flags & RFAPI_AHR_SET_PFX_TO_NEXTHOP))
     {
 
@@ -669,7 +672,7 @@ add_vnc_route (
         }
       p = &pfx_buf;
     }
-
+#endif
   for (vo = options_vn; vo; vo = vo->next)
     {
       if (RFAPI_VN_OPTION_TYPE_L2ADDR == vo->type)

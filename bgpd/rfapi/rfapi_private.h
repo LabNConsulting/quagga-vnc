@@ -324,7 +324,9 @@ add_vnc_route (
   int				flags);
 #define RFAPI_AHR_NO_TUNNEL_SUBTLV	0x00000001
 #define RFAPI_AHR_RFPOPT_IS_VNCTLV	0x00000002      /* hack! */
-#define RFAPI_AHR_SET_PFX_TO_NEXTHOP	0x00000004
+#if 0   /* unused? */
+#  define RFAPI_AHR_SET_PFX_TO_NEXTHOP	0x00000004
+#endif
 
 extern void
 del_vnc_route (
