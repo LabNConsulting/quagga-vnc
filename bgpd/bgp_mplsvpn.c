@@ -50,8 +50,10 @@ decode_rd_type (u_char *pnt)
    * VNC L2 stores LHI in lower byte, so omit it
    */
   if (v != RD_TYPE_VNC_ETH)
-#endif
     v |= (u_int16_t) *pnt;
+#else                           /* duplicate code for clarity */
+  v |= (u_int16_t) *pnt;
+#endif
 
   return v;
 }
