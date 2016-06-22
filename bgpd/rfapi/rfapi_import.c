@@ -1592,16 +1592,23 @@ rfapiNhlAddNodeRoutes (
   int				removed,     /* in */
   struct rfapi_next_hop_entry	**head,      /* in/out */
   struct rfapi_next_hop_entry	**tail,      /* in/out */
-  struct rfapi_ip_addr		*exclude_vnaddr)  /* omit routes to same NVE */
+  struct rfapi_ip_addr		*exclude_vnaddr,  /* omit routes to same NVE */
+  struct route_node		*rfd_rib_node,/* preload this NVE rib node */
+  struct prefix			*pfx_target_original) /* query target */
 {
-  struct bgp_info *bi;
-  struct rfapi_next_hop_entry *new;
-  struct prefix pfx;
+  struct bgp_info               *bi;
+  struct rfapi_next_hop_entry   *new;
+  struct prefix                 pfx_un;
+  struct skiplist               *seen_nexthops;
+  int                           count = 0;
+  int                           is_l2 = (rn->p.family == AF_ETHERNET);
 
-  int count = 0;
-  int is_l2 = (rn->p.family == AF_ETHERNET);
-
-  struct skiplist *seen_nexthops;
+  if (rfapiRibFTDFilterRecentPrefix(
+    (struct rfapi_descriptor *)(rfd_rib_node->table->info), rn,
+    pfx_target_original))
+    {
+      return 0;
+    }
 
   seen_nexthops =
     skiplist_new (0, vnc_prefix_cmp, (void (*)(void *)) prefix_free);
@@ -1660,7 +1667,7 @@ rfapiNhlAddNodeRoutes (
           continue;
         }
 
-      if (rfapiGetUnAddrOfVpnBi (bi, &pfx))
+      if (rfapiGetUnAddrOfVpnBi (bi, &pfx_un))
         {
 #if DEBUG_ENCAP_MONITOR
           zlog_debug ("%s: failed to get UN address of this VPN bi",
@@ -1674,6 +1681,15 @@ rfapiNhlAddNodeRoutes (
       skiplist_insert (seen_nexthops, newpfx, newpfx);
 
       new = rfapiRouteInfo2NextHopEntry(rprefix, bi, lifetime, rn);
+      if (new)
+	{
+	  if (rfapiRibPreloadBi(rfd_rib_node, &pfx_vn, &pfx_un, lifetime, bi))
+	    {
+	      /* duplicate filtered by RIB */
+	      rfapi_free_next_hop_list (new);
+	      new = NULL;
+	    }
+        }
 
       if (new)
         {
@@ -1712,26 +1728,36 @@ rfapiNhlAddSubtree (
     struct rfapi_next_hop_entry	**head,		/* in/out */
     struct rfapi_next_hop_entry	**tail,		/* in/out */
     struct route_node		*omit_node,	/* in */
-    struct rfapi_ip_addr	*exclude_vnaddr)/* omit routes to same NVE */
+    struct rfapi_ip_addr	*exclude_vnaddr,/* omit routes to same NVE */
+    struct route_table          *rfd_rib_table,/* preload here */
+    struct prefix		*pfx_target_original) /* query target */
 {
   struct rfapi_ip_prefix rprefix;
-  int rcount = 0;
+  int                    rcount = 0;
 
   if (rn->l_left && rn->l_left != omit_node)
     {
       if (rn->l_left->info)
         {
-          int count = 0;
+          int               count = 0;
+          struct route_node *rib_rn = NULL;
+
           rfapiQprefix2Rprefix (&rn->l_left->p, &rprefix);
+          if (rfd_rib_table)
+            {
+              rib_rn = route_node_get(rfd_rib_table, &rn->l_left->p);
+            }
+
           count = rfapiNhlAddNodeRoutes (rn->l_left, &rprefix, lifetime, 0,
-                                         head, tail, exclude_vnaddr);
+            head, tail, exclude_vnaddr, rib_rn, pfx_target_original);
           if (!count)
             {
-              count =
-                rfapiNhlAddNodeRoutes (rn->l_left, &rprefix, lifetime, 1,
-                                       head, tail, exclude_vnaddr);
+              count = rfapiNhlAddNodeRoutes (rn->l_left, &rprefix, lifetime, 1,
+                head, tail, exclude_vnaddr, rib_rn, pfx_target_original);
             }
           rcount += count;
+	  if (rib_rn)
+	    route_unlock_node(rib_rn);
         }
     }
 
@@ -1739,31 +1765,36 @@ rfapiNhlAddSubtree (
     {
       if (rn->l_right->info)
         {
-          int count = 0;
+          int               count = 0;
+          struct route_node *rib_rn = NULL;
+
           rfapiQprefix2Rprefix (&rn->l_right->p, &rprefix);
+          if (rfd_rib_table)
+            {
+              rib_rn = route_node_get(rfd_rib_table, &rn->l_right->p);
+            }
           count = rfapiNhlAddNodeRoutes (rn->l_right, &rprefix, lifetime, 0,
-                                         head, tail, exclude_vnaddr);
+            head, tail, exclude_vnaddr, rib_rn, pfx_target_original);
           if (!count)
             {
-              count =
-                rfapiNhlAddNodeRoutes (rn->l_right, &rprefix, lifetime, 1,
-                                       head, tail, exclude_vnaddr);
+              count = rfapiNhlAddNodeRoutes (rn->l_right, &rprefix, lifetime, 1,
+                head, tail, exclude_vnaddr, rib_rn, pfx_target_original);
             }
           rcount += count;
+	  if (rib_rn)
+	    route_unlock_node(rib_rn);
         }
     }
 
   if (rn->l_left)
     {
-      rcount +=
-        rfapiNhlAddSubtree (rn->l_left, lifetime, head, tail, omit_node,
-                            exclude_vnaddr);
+      rcount += rfapiNhlAddSubtree (rn->l_left, lifetime, head, tail, omit_node,
+        exclude_vnaddr, rfd_rib_table, pfx_target_original);
     }
   if (rn->l_right)
     {
-      rcount +=
-        rfapiNhlAddSubtree (rn->l_right, lifetime, head, tail, omit_node,
-                            exclude_vnaddr);
+      rcount += rfapiNhlAddSubtree (rn->l_right, lifetime, head, tail,
+        omit_node, exclude_vnaddr, rfd_rib_table, pfx_target_original);
     }
 
   return rcount;
@@ -1784,13 +1815,16 @@ struct rfapi_next_hop_entry *
 rfapiRouteNode2NextHopList (
   struct route_node	*rn,
   uint32_t		lifetime,	/* put into nexthop entries */
-  struct rfapi_ip_addr	*exclude_vnaddr)/* omit routes to same NVE */
+  struct rfapi_ip_addr	*exclude_vnaddr,/* omit routes to same NVE */
+  struct route_table	*rfd_rib_table,/* preload here */
+  struct prefix		*pfx_target_original) /* query target */
 {
-  struct rfapi_ip_prefix rprefix;
+  struct rfapi_ip_prefix      rprefix;
   struct rfapi_next_hop_entry *answer = NULL;
   struct rfapi_next_hop_entry *last = NULL;
-  struct route_node *parent;
-  int count = 0;
+  struct route_node           *parent;
+  int                         count = 0;
+  struct route_node           *rib_rn;
 
 #if DEBUG_RETURNED_NHL
   {
@@ -1805,11 +1839,13 @@ rfapiRouteNode2NextHopList (
 
   rfapiQprefix2Rprefix (&rn->p, &rprefix);
 
+  rib_rn = rfd_rib_table? route_node_get(rfd_rib_table, &rn->p): NULL;
+
   /*
    * Add non-withdrawn routes at this node
    */
   count = rfapiNhlAddNodeRoutes (rn, &rprefix, lifetime, 0, &answer, &last,
-                                 exclude_vnaddr);
+    exclude_vnaddr, rib_rn, pfx_target_original);
 
   /*
    * If the list has at least one entry, it's finished
@@ -1817,11 +1853,13 @@ rfapiRouteNode2NextHopList (
   if (count)
     {
       count += rfapiNhlAddSubtree (rn, lifetime, &answer, &last, NULL,
-                                   exclude_vnaddr);
+        exclude_vnaddr, rfd_rib_table, pfx_target_original);
       zlog_debug ("%s: %d nexthops, answer=%p", __func__, count, answer);
 #if DEBUG_RETURNED_NHL
       rfapiPrintNhl (NULL, answer);
 #endif
+      if (rib_rn)
+        route_unlock_node(rib_rn);
       return answer;
     }
 
@@ -1829,7 +1867,10 @@ rfapiRouteNode2NextHopList (
    * Add withdrawn routes at this node
    */
   count = rfapiNhlAddNodeRoutes (rn, &rprefix, lifetime, 1, &answer, &last,
-                                 exclude_vnaddr);
+    exclude_vnaddr, rib_rn, pfx_target_original);
+  if (rib_rn)
+    route_unlock_node(rib_rn);
+
   // rfapiPrintNhl(NULL, answer);
 
   /*
@@ -1849,13 +1890,14 @@ rfapiRouteNode2NextHopList (
    */
   if (parent)
     {
+      rib_rn = rfd_rib_table? route_node_get(rfd_rib_table, &parent->p): NULL;
       rfapiQprefix2Rprefix (&parent->p, &rprefix);
       count += rfapiNhlAddNodeRoutes (parent, &rprefix, lifetime, 0,
-                                      &answer, &last, exclude_vnaddr);
-      //rfapiPrintNhl(NULL, answer);
+        &answer, &last, exclude_vnaddr, rib_rn, pfx_target_original);
       count += rfapiNhlAddSubtree (parent, lifetime, &answer, &last, rn,
-                                   exclude_vnaddr);
-      //rfapiPrintNhl(NULL, answer);
+        exclude_vnaddr, rfd_rib_table, pfx_target_original);
+      if (rib_rn)
+        route_unlock_node(rib_rn);
     }
   else
     {
@@ -1866,7 +1908,7 @@ rfapiRouteNode2NextHopList (
        */
       if (count)
         count += rfapiNhlAddSubtree (rn, lifetime, &answer, &last, rn,
-                                     exclude_vnaddr);
+          exclude_vnaddr, rfd_rib_table, pfx_target_original);
     }
 
   zlog_debug ("%s: %d nexthops, answer=%p", __func__, count, answer);
@@ -1883,7 +1925,9 @@ struct rfapi_next_hop_entry *
 rfapiRouteTable2NextHopList (
     struct route_table		*rt,
     uint32_t			lifetime,	/* put into nexthop entries */
-    struct rfapi_ip_addr	*exclude_vnaddr)/* omit routes to same NVE */
+    struct rfapi_ip_addr	*exclude_vnaddr,/* omit routes to same NVE */
+    struct route_table		*rfd_rib_table, /* preload this NVE rib table */
+    struct prefix		*pfx_target_original) /* query target */
 {
   struct route_node *rn;
   struct rfapi_next_hop_entry *biglist = NULL;
@@ -1894,7 +1938,8 @@ rfapiRouteTable2NextHopList (
   for (rn = route_top (rt); rn; rn = route_next (rn))
     {
 
-      nhl = rfapiRouteNode2NextHopList (rn, lifetime, exclude_vnaddr);
+      nhl = rfapiRouteNode2NextHopList (rn, lifetime, exclude_vnaddr,
+	rfd_rib_table, pfx_target_original);
       if (!tail)
         {
           tail = biglist = nhl;
@@ -1924,14 +1969,19 @@ rfapiEthRouteNode2NextHopList (
   struct route_node		*rn,
   struct rfapi_ip_prefix	*rprefix,
   uint32_t			lifetime,       /* put into nexthop entries */
-  struct rfapi_ip_addr		*exclude_vnaddr) /* omit routes to same NVE */
+  struct rfapi_ip_addr		*exclude_vnaddr,/* omit routes to same NVE */
+  struct route_table		*rfd_rib_table,/* preload NVE rib table */
+  struct prefix			*pfx_target_original) /* query target */
 {
   int count = 0;
   struct rfapi_next_hop_entry *answer = NULL;
   struct rfapi_next_hop_entry *last = NULL;
+  struct route_node           *rib_rn;
 
-  count = rfapiNhlAddNodeRoutes (rn, rprefix, lifetime, 0,
-                                 &answer, &last, NULL);
+  rib_rn = rfd_rib_table? route_node_get(rfd_rib_table, &rn->p): NULL;
+
+  count = rfapiNhlAddNodeRoutes (rn, rprefix, lifetime, 0, &answer, &last,
+    NULL, rib_rn, pfx_target_original);
 
 #if DEBUG_ENCAP_MONITOR
   zlog_debug ("%s: node %p: %d non-holddown routes", __func__, rn, count);
@@ -1939,10 +1989,13 @@ rfapiEthRouteNode2NextHopList (
 
   if (!count)
     {
-      count = rfapiNhlAddNodeRoutes (rn, rprefix, lifetime, 1,
-                                     &answer, &last, exclude_vnaddr );
+      count = rfapiNhlAddNodeRoutes (rn, rprefix, lifetime, 1, &answer, &last,
+	exclude_vnaddr, rib_rn, pfx_target_original);
       zlog_debug ("%s: node %p: %d holddown routes", __func__, rn, count);
     }
+
+    if (rib_rn)
+      route_unlock_node(rib_rn);
 
 #if DEBUG_RETURNED_NHL
   rfapiPrintNhl (NULL, answer);
@@ -1960,7 +2013,9 @@ rfapiEthRouteTable2NextHopList (
   uint32_t			logical_net_id,
   struct rfapi_ip_prefix	*rprefix,
   uint32_t			lifetime,	/* put into nexthop entries */
-  struct rfapi_ip_addr		*exclude_vnaddr)/* omit routes to same NVE */
+  struct rfapi_ip_addr		*exclude_vnaddr,/* omit routes to same NVE */
+  struct route_table		*rfd_rib_table, /* preload NVE rib node */
+  struct prefix			*pfx_target_original) /* query target */
 {
   struct rfapi_import_table *it;
   struct bgp *bgp = bgp_get_default ();
@@ -1978,7 +2033,8 @@ rfapiEthRouteTable2NextHopList (
   for (rn = route_top (rt); rn; rn = route_next (rn))
     {
 
-      nhl = rfapiEthRouteNode2NextHopList(rn, rprefix, lifetime, exclude_vnaddr);
+      nhl = rfapiEthRouteNode2NextHopList(rn, rprefix, lifetime,
+	exclude_vnaddr, rfd_rib_table, pfx_target_original);
       if (!tail)
         {
           tail = biglist = nhl;

@@ -36,7 +36,8 @@
  */
 struct rfapi_rib_key
 {
-  struct prefix vn;
+  struct prefix		vn;
+  struct prefix_rd	rd;
 
   /*
    * for L2 routes: optional IP addr
@@ -92,7 +93,16 @@ rfapiRibUpdatePendingNodeSubtree (
   struct route_node		*omit_subtree,
   uint32_t			lifetime);
 
-extern struct rfapi_next_hop_entry *rfapiRibPreload (
+extern int
+rfapiRibPreloadBi(
+  struct route_node *rfd_rib_node,
+  struct prefix     *pfx_vn,
+  struct prefix     *pfx_un,
+  uint32_t          lifetime,
+  struct bgp_info   *bi);
+
+extern struct rfapi_next_hop_entry *
+rfapiRibPreload (
   struct bgp			*bgp,
   struct rfapi_descriptor	*rfd,
   struct rfapi_next_hop_entry	*response,
@@ -117,12 +127,11 @@ rfapiRibShowResponses (
   struct prefix	*pfx_match,
   int		show_removed);
 
-extern struct rfapi_next_hop_entry *
-rfapiRibFTDFilterRecent (
-  struct bgp			*bgp,
+extern int
+rfapiRibFTDFilterRecentPrefix(
   struct rfapi_descriptor	*rfd,
-  struct prefix			*pfx_target,  /* target expressed as pfx */
-  struct rfapi_next_hop_entry	*response);
+  struct route_node             *it_rn,                /* import table node */
+  struct prefix                 *pfx_target_original); /* query target */
 
 extern void
 rfapiFreeRfapiUnOptionChain (struct rfapi_un_option *p);

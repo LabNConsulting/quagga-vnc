@@ -110,20 +110,26 @@ extern struct rfapi_next_hop_entry *
 rfapiRouteNode2NextHopList (
   struct route_node	*rn,
   uint32_t		lifetime,		/* put into nexthop entries */
-  struct rfapi_ip_addr	*exclude_vnaddr);	/* omit routes to same NVE */
+  struct rfapi_ip_addr	*exclude_vnaddr,	/* omit routes to same NVE */
+  struct route_table    *rfd_rib_table,		/* preload this NVE rib table */
+  struct prefix		*pfx_target_original);	/* query target */
 
 extern struct rfapi_next_hop_entry *
 rfapiRouteTable2NextHopList (
   struct route_table	*rt,
   uint32_t		lifetime,		/* put into nexthop entries */
-  struct rfapi_ip_addr	*exclude_vnaddr);	/* omit routes to same NVE */
+  struct rfapi_ip_addr	*exclude_vnaddr,	/* omit routes to same NVE */
+  struct route_table    *rfd_rib_table,		/* preload this NVE rib table */
+  struct prefix		*pfx_target_original);	/* query target */
 
 extern struct rfapi_next_hop_entry *
 rfapiEthRouteTable2NextHopList (
   uint32_t			logical_net_id,
   struct rfapi_ip_prefix	*rprefix,
   uint32_t			lifetime,        /* put into nexthop entries */
-  struct rfapi_ip_addr		*exclude_vnaddr);/* omit routes to same NVE */
+  struct rfapi_ip_addr		*exclude_vnaddr, /* omit routes to same NVE */
+  struct route_table            *rib_route_table,/* preload NVE rib node */
+  struct prefix			*pfx_target_original);	/* query target */
 
 extern int
 rfapiEcommunitiesIntersect (struct ecommunity *e1, struct ecommunity *e2);
@@ -174,7 +180,9 @@ rfapiEthRouteNode2NextHopList (
   struct route_node		*rn,
   struct rfapi_ip_prefix	*rprefix,
   uint32_t			lifetime,	 /* put into nexthop entries */
-  struct rfapi_ip_addr		*exclude_vnaddr);/* omit routes to same NVE */
+  struct rfapi_ip_addr		*exclude_vnaddr, /* omit routes to same NVE */
+  struct route_table            *rib_route_table,/* preload NVE rib table */
+  struct prefix			*pfx_target_original); /* query target */
 
 extern struct rfapi_import_table *
 rfapiMacImportTableGetNoAlloc (

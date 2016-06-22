@@ -107,7 +107,10 @@ struct rfapi_descriptor
   struct route_table		*rib_pending[AFI_MAX];
   struct work_queue		*updated_responses_queue;
   struct route_table		*rsp_times[AFI_MAX];
+
   uint32_t			rsp_counter;		/* dedup initial rsp */
+  time_t			rsp_time;		/* dedup initial rsp */
+  time_t			ftd_last_allowed_time;	/* FTD filter */
 
   unsigned int			stat_count_nh_reachable;
   unsigned int			stat_count_nh_removal;

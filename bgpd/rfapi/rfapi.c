@@ -1427,26 +1427,22 @@ rfapi_open_inner (
   /*
    * Allocate response tables if needed
    */
-  if (!rfd->rib[AFI_IP])
-    rfd->rib[AFI_IP] = route_table_init ();
-  if (!rfd->rib[AFI_IP6])
-    rfd->rib[AFI_IP6] = route_table_init ();
-  if (!rfd->rib[AFI_ETHER])
-    rfd->rib[AFI_ETHER] = route_table_init ();
+#define RFD_RTINIT_AFI(rh, ary, afi) do {\
+  if (!ary[afi]) {    \
+    ary[afi] = route_table_init ();\
+    ary[afi]->info = rh;\
+  }\
+} while (0)
 
-  if (!rfd->rib_pending[AFI_IP])
-    rfd->rib_pending[AFI_IP] = route_table_init ();
-  if (!rfd->rib_pending[AFI_IP6])
-    rfd->rib_pending[AFI_IP6] = route_table_init ();
-  if (!rfd->rib_pending[AFI_ETHER])
-    rfd->rib_pending[AFI_ETHER] = route_table_init ();
+#define RFD_RTINIT(rh, ary) do {\
+    RFD_RTINIT_AFI(rh, ary, AFI_IP);\
+    RFD_RTINIT_AFI(rh, ary, AFI_IP6);\
+    RFD_RTINIT_AFI(rh, ary, AFI_ETHER);\
+} while(0)
 
-  if (!rfd->rsp_times[AFI_IP])
-    rfd->rsp_times[AFI_IP] = route_table_init ();
-  if (!rfd->rsp_times[AFI_IP6])
-    rfd->rsp_times[AFI_IP6] = route_table_init ();
-  if (!rfd->rsp_times[AFI_ETHER])
-    rfd->rsp_times[AFI_ETHER] = route_table_init ();
+  RFD_RTINIT(rfd, rfd->rib);
+  RFD_RTINIT(rfd, rfd->rib_pending);
+  RFD_RTINIT(rfd, rfd->rsp_times);
 
   /*
    * Link to Import Table
@@ -1589,16 +1585,17 @@ rfapi_query_inner (
   struct rfapi_l2address_option	*l2o,      /* may be NULL */
   struct rfapi_next_hop_entry	**ppNextHopEntry)
 {
-  afi_t afi;
-  struct prefix p;
-  struct prefix p_original;
-  struct route_node *rn;
-  struct rfapi_descriptor *rfd = (struct rfapi_descriptor *) handle;
-  struct bgp *bgp = rfd->bgp;;
-  struct rfapi_next_hop_entry *pNHE;
-  struct rfapi_ip_addr *self_vn_addr = NULL;
-  int eth_is_0 = 0;
-  int use_eth_resolution = 0;
+  afi_t                         afi;
+  struct prefix                 p;
+  struct prefix                 p_original;
+  struct route_node             *rn;
+  struct rfapi_descriptor       *rfd = (struct rfapi_descriptor *) handle;
+  struct bgp                    *bgp = rfd->bgp;
+  struct rfapi_next_hop_entry   *pNHE = NULL;
+  struct rfapi_ip_addr          *self_vn_addr = NULL;
+  int                           eth_is_0 = 0;
+  int                           use_eth_resolution = 0;
+  struct rfapi_next_hop_entry   *i_nhe;
 
   /* preemptive */
   if (!bgp)
@@ -1623,6 +1620,11 @@ rfapi_query_inner (
       return EBADF;
     }
 
+  rfd->rsp_counter++;                 /* dedup: identify this generation */
+  rfd->rsp_time = quagga_time (NULL); /* response content dedup */
+  rfd->ftd_last_allowed_time =
+    bgp_clock() - bgp->rfapi_cfg->rfp_cfg.ftd_advertisement_interval;
+
   if (l2o)
     {
       if (!memcmp (l2o->macaddr.octet, rfapi_ethaddr0.octet, ETHER_ADDR_LEN))
@@ -1639,21 +1641,21 @@ rfapi_query_inner (
   if (ppNextHopEntry)
     *ppNextHopEntry = NULL;
 
+  /*
+   * Save original target in prefix form. In case of L2-based queries,
+   * p_original will be modified to reflect the L2 target
+   */
+  assert(!rfapiRaddr2Qprefix (target, &p_original));
+
   if (bgp->rfapi_cfg->rfp_cfg.download_type == RFAPI_RFP_DOWNLOAD_FULL)
     {
-      int rc;
       /* convert query to 0/0 when full-table download is enabled */
       memset ((char *) &p, 0, sizeof (p));
       p.family = target->addr_family;
-      rc = rfapiRaddr2Qprefix (target, &p_original);
-      assert (!rc);
     }
   else
     {
-      int rc;
-      rc = rfapiRaddr2Qprefix (target, &p);
-      assert (!rc);
-      p_original = p;
+      p = p_original;
     }
 
   {
@@ -1677,6 +1679,12 @@ rfapi_query_inner (
     {
       uint32_t logical_net_id = l2o->logical_net_id;
       struct ecommunity *l2com;
+
+      /*
+       * fix up p_original to contain L2 address
+       */
+      rfapiL2o2Qprefix (l2o, &p_original);
+
       l2com =
         bgp_rfapi_get_ecommunity_by_lni_label (bgp, 1, logical_net_id,
                                                l2o->label);
@@ -1716,10 +1724,8 @@ rfapi_query_inner (
               rprefix.length = 128;
             }
 
-          pNHE = rfapiEthRouteTable2NextHopList (logical_net_id,
-                                                 &rprefix,
-                                                 rfd->response_lifetime,
-                                                 self_vn_addr);
+          pNHE = rfapiEthRouteTable2NextHopList (logical_net_id, &rprefix,
+            rfd->response_lifetime, self_vn_addr, rfd->rib[afi], &p_original);
           goto done;
         }
 
@@ -1748,10 +1754,9 @@ rfapi_query_inner (
           /*
            * Generate nexthop list for caller
            */
-          pNHE =
-            rfapiRouteTable2NextHopList (rfd->import_table->imported_vpn[afi],
-                                         rfd->response_lifetime,
-                                         self_vn_addr);
+          pNHE = rfapiRouteTable2NextHopList (
+	    rfd->import_table->imported_vpn[afi], rfd->response_lifetime,
+            self_vn_addr, rfd->rib[afi], &p_original);
           goto done;
         }
 
@@ -1781,7 +1786,7 @@ rfapi_query_inner (
 
   if (VNC_DEBUG(RFAPI_QUERY))
     {
-  rfapiShowImportTable (NULL, "query", rfd->import_table->imported_vpn[afi],
+      rfapiShowImportTable (NULL, "query", rfd->import_table->imported_vpn[afi],
                         1);
     }
 
@@ -1801,64 +1806,54 @@ rfapi_query_inner (
           rprefix.length = 128;
         }
 
-      pNHE = rfapiEthRouteNode2NextHopList (rn,
-                                            &rprefix,
-                                            rfd->response_lifetime,
-                                            self_vn_addr);
+      pNHE = rfapiEthRouteNode2NextHopList (rn, &rprefix,
+        rfd->response_lifetime, self_vn_addr, rfd->rib[afi], &p_original);
 
-      /* AF_ETHERNET is flag to rfapiRibFTDFilterRecent() below */
-      rfapiL2o2Qprefix (l2o, &p_original);
 
     }
   else
     {
-
       /* 
        * Generate answer to query
        */
-      pNHE = rfapiRouteNode2NextHopList (rn, rfd->response_lifetime,
-                                         self_vn_addr);
+      pNHE = rfapiRouteNode2NextHopList(rn, rfd->response_lifetime,
+        self_vn_addr, rfd->rib[afi], &p_original);
     }
 
   route_unlock_node (rn);
 
 done:
-  rfd->rsp_counter++;           /* XXX needed for dedup: identify this generation */
-  if (pNHE && !use_eth_resolution)
-    pNHE = rfapiRibFTDFilterRecent (bgp, rfd, &p_original, pNHE);
+  if (ppNextHopEntry)
+    {
+       /* only count if caller gets it */
+       ++bgp->rfapi->response_immediate_count;
+    }
+
+  if (!pNHE)
+    {
+      zlog_debug ("%s: NO NHEs, returning ENOENT", __func__);
+      return ENOENT;
+    }
+
+  /*
+   * count nexthops for statistics
+   */
+  for (i_nhe = pNHE; i_nhe; i_nhe = i_nhe->next)
+    {
+      ++rfd->stat_count_nh_reachable;
+    }
 
   if (ppNextHopEntry)
     {
       *ppNextHopEntry = pNHE;
-      ++bgp->rfapi->response_immediate_count;   /* only count if caller gets it */
     }
   else
     {
       rfapi_free_next_hop_list (pNHE);
     }
-  if (pNHE)
-    {
-      struct rfapi_next_hop_entry *ptr;
 
-      /*
-       * preload RIB and filter duplicates
-       */
-      pNHE = rfapiRibPreload (bgp, rfd, pNHE, use_eth_resolution);
-
-      /*
-       * count nexthops for statistics
-       */
-      for (ptr = pNHE; ptr; ptr = ptr->next)
-        {
-          ++rfd->stat_count_nh_reachable;
-        }
-
-      zlog_debug ("%s: success", __func__);
-      return 0;
-    }
-  zlog_debug ("%s: NO NHEs, returning ENOENT", __func__);
-
-  return ENOENT;
+  zlog_debug ("%s: success", __func__);
+  return 0;
 }
 
 /*

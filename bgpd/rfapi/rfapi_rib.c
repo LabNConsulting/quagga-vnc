@@ -54,6 +54,7 @@
 #define DEBUG_PROCESS_PENDING_NODE	0
 #define DEBUG_PENDING_DELETE_ROUTE	0
 #define DEBUG_NHL			0
+#define DEBUG_RIB_SL_RD                 0
 
 /* forward decl */
 #if DEBUG_NHL
@@ -420,6 +421,10 @@ rfapi_rib_key_cmp (void *k1, void *k2)
   if (ret)
     return ret;
 
+  ret = vnc_prefix_cmp(&a->rd, &b->rd);
+  if (ret)
+    return ret;
+
   ret = vnc_prefix_cmp (&a->aux_prefix, &b->aux_prefix);
 
   return ret;
@@ -621,6 +626,213 @@ rfapiRibFree (struct rfapi_descriptor *rfd)
       route_table_finish (rfd->rsp_times[afi]);
       rfd->rib[afi] = NULL;
     }
+}
+
+/*
+ * Copies struct bgp_info to struct rfapi_info, except for rk fields and un
+ */
+static void
+rfapiRibBi2Ri(
+  struct bgp_info   *bi,
+  struct rfapi_info *ri,
+  uint32_t          lifetime)
+{
+  struct bgp_attr_encap_subtlv *pEncap;
+
+  ri->cost = rfapiRfpCost (bi->attr);
+  ri->lifetime = lifetime;
+
+  /* This loop based on rfapiRouteInfo2NextHopEntry() */
+  for (pEncap = bi->attr->extra->vnc_subtlvs; pEncap; pEncap = pEncap->next)
+    {
+      struct bgp_tea_options *hop;
+
+      switch (pEncap->type)
+        {
+        case BGP_VNC_SUBTLV_TYPE_LIFETIME:
+          /* use configured lifetime, not attr lifetime */
+          break;
+
+        case BGP_VNC_SUBTLV_TYPE_RFPOPTION:
+          hop = XCALLOC (MTYPE_BGP_TEA_OPTIONS,
+                         sizeof (struct bgp_tea_options));
+          assert (hop);
+          hop->type = pEncap->value[0];
+          hop->length = pEncap->value[1];
+          hop->value = XCALLOC (MTYPE_BGP_TEA_OPTIONS_VALUE,
+                                pEncap->length - 2);
+          assert (hop->value);
+          memcpy (hop->value, pEncap->value + 2, pEncap->length - 2);
+          if (hop->length > pEncap->length - 2)
+            {
+              zlog_warn ("%s: VNC subtlv length mismatch: "
+                         "RFP option says %d, attr says %d "
+                         "(shrinking)",
+                         __func__, hop->length, pEncap->length - 2);
+              hop->length = pEncap->length - 2;
+            }
+          hop->next = ri->tea_options;
+          ri->tea_options = hop;
+          break;
+
+        default:
+          break;
+        }
+    }
+
+  rfapi_un_options_free (ri->un_options);   /* maybe free old version */
+  ri->un_options = rfapi_encap_tlv_to_un_option (bi->attr);
+
+  /*
+   * VN options
+   */
+  if (bi->extra && 
+      decode_rd_type(bi->extra->vnc.import.rd.val) == RD_TYPE_VNC_ETH)
+    {
+      /* ethernet route */
+
+      struct rfapi_vn_option *vo;
+
+      vo = XCALLOC (MTYPE_RFAPI_VN_OPTION, sizeof (struct rfapi_vn_option));
+      assert (vo);
+
+      vo->type = RFAPI_VN_OPTION_TYPE_L2ADDR;
+
+      /* copy from RD already stored in bi, so we don't need it_node */
+      memcpy (&vo->v.l2addr.macaddr, bi->extra->vnc.import.rd.val+2,
+	ETHER_ADDR_LEN);
+
+      if (bi->attr && bi->attr->extra)
+        {
+          (void) rfapiEcommunityGetLNI (bi->attr->extra->ecommunity,
+                                        &vo->v.l2addr.logical_net_id);
+        }
+
+      /* local_nve_id comes from RD */
+      vo->v.l2addr.local_nve_id = bi->extra->vnc.import.rd.val[1];
+
+      /* label comes from MP_REACH_NLRI label */
+      vo->v.l2addr.label = decode_label (bi->extra->tag);
+
+      rfapi_vn_options_free (ri->vn_options);   /* maybe free old version */
+      ri->vn_options = vo;
+    }
+
+  /*
+   * If there is an auxiliary IP address (L2 can have it), copy it
+   */
+  if (bi && bi->extra && bi->extra->vnc.import.aux_prefix.family)
+    {
+      ri->rk.aux_prefix = bi->extra->vnc.import.aux_prefix;
+    }
+}
+
+/*
+ * rfapiRibPreloadBi
+ *
+ *	Install route into NVE RIB model so as to be consistent with
+ *	caller's response to rfapi_query().
+ *
+ *	Also: return indication to caller whether this specific route
+ *	should be included in the response to the NVE according to
+ *	the following tests:
+ *
+ *	1. If there were prior duplicates of this route in this same
+ *	   query response, don't include the route.
+ *
+ * RETURN VALUE:
+ *
+ *	0	OK to include route in response
+ *	!0	do not include route in response
+ */
+int
+rfapiRibPreloadBi(
+  struct route_node *rfd_rib_node,	/* NULL = don't preload or filter */
+  struct prefix     *pfx_vn,
+  struct prefix     *pfx_un,
+  uint32_t          lifetime,
+  struct bgp_info   *bi)
+{
+  struct rfapi_descriptor *rfd;
+  struct skiplist         *slRibPt = NULL;
+  struct rfapi_info       *ori = NULL;
+  struct rfapi_rib_key    rk;
+  struct route_node       *trn;
+  afi_t                   afi;
+
+  if (!rfd_rib_node)
+    return 0;
+
+  afi  = family2afi(rfd_rib_node->p.family);
+
+  rfd = (struct rfapi_descriptor *)(rfd_rib_node->table->info);
+
+  memset((void *)&rk, 0, sizeof(rk));
+  rk.vn = *pfx_vn;
+  rk.rd = bi->extra->vnc.import.rd;
+
+  /*
+   * If there is an auxiliary IP address (L2 can have it), copy it
+   */
+  if (bi->extra->vnc.import.aux_prefix.family)
+    {
+      rk.aux_prefix = bi->extra->vnc.import.aux_prefix;
+    }
+
+  /*
+   * is this route already in NVE's RIB?
+   */
+  slRibPt = (struct skiplist *) rfd_rib_node->info;
+
+  if (slRibPt && !skiplist_search (slRibPt, &rk, (void **) &ori))
+    {
+
+      if ((ori->rsp_counter == rfd->rsp_counter) &&
+        (ori->last_sent_time == rfd->rsp_time))
+	{
+	  return -1;	/* duplicate in this response */
+	}
+
+      /* found: update contents of existing route in RIB */
+      ori->un = *pfx_un;
+      rfapiRibBi2Ri(bi, ori, lifetime);
+    }
+  else
+    {
+      /* not found: add new route to RIB */
+      ori = rfapi_info_new ();
+      ori->rk = rk;
+      ori->un = *pfx_un;
+      rfapiRibBi2Ri(bi, ori, lifetime);
+
+      if (!slRibPt)
+        {
+          slRibPt = skiplist_new (0, rfapi_rib_key_cmp, NULL);
+          rfd_rib_node->info = slRibPt;
+          route_lock_node (rfd_rib_node);
+          RFAPI_RIB_PREFIX_COUNT_INCR (rfd, rfd->bgp->rfapi);
+        }
+      skiplist_insert (slRibPt, &ori->rk, ori);
+    }
+
+  ori->last_sent_time = quagga_time (NULL);
+
+  /*
+   * poke timer
+   */
+  RFAPI_RIB_CHECK_COUNTS (0, 0);
+  rfapiRibStartTimer (rfd, ori, rfd_rib_node, 0);
+  RFAPI_RIB_CHECK_COUNTS (0, 0);
+
+  /*
+   * Update last sent time for prefix
+   */
+  trn = route_node_get (rfd->rsp_times[afi], &rfd_rib_node->p); /* locks trn */
+  trn->info = (void *) (uintptr_t) bgp_clock ();
+  if (trn->lock > 1)
+    route_unlock_node (trn);
+
+  return 0;
 }
 
 /*
@@ -938,6 +1150,8 @@ process_pending_node (
           else
             {
 
+	      char	buf_rd[BUFSIZ];
+
               /* not found: add new route to RIB */
               ori = rfapi_info_new ();
               ori->rk = ri->rk;
@@ -956,8 +1170,15 @@ process_pending_node (
                   route_lock_node (rn);
                 }
               skiplist_insert (slRibPt, &ori->rk, ori);
-              zlog_debug ("%s:   nomatch lPendCost item %p in slRibPt, added",
-                          __func__, ri);
+
+#if DEBUG_RIB_SL_RD
+	      prefix_rd2str(&ori->rk.rd, buf_rd, sizeof(buf_rd));
+#else
+	      buf_rd[0] = 0;
+#endif
+
+              zlog_debug ("%s:   nomatch lPendCost item %p in slRibPt, added (rd=%s)",
+                          __func__, ri, buf_rd);
             }
 
           /*
@@ -1180,6 +1401,14 @@ callback:
                   rfapiRibStartTimer (rfd, ri, rn, 1);
                   RFAPI_RIB_CHECK_COUNTS (0, delete_list->count);
                   ri->last_sent_time = quagga_time (NULL);
+#if DEBUG_RIB_SL_RD
+		  {
+		    char buf_rd[BUFSIZ];
+		    prefix_rd2str(&ri->rk.rd, buf_rd, sizeof(buf_rd));
+		    zlog_debug("%s: move route to recently deleted list, rd=%s",
+			__func__, buf_rd);
+		  }
+#endif
 
                 }
               else
@@ -1429,7 +1658,6 @@ rfapiRibUpdatePendingNode (
     {
 
       struct rfapi_info *ri;
-      struct bgp_attr_encap_subtlv *pEncap;
       struct prefix pfx_nh;
 
       if (!bi->attr)
@@ -1463,6 +1691,15 @@ rfapiRibUpdatePendingNode (
 
       ri = rfapi_info_new ();
       ri->rk.vn = pfx_nh;
+      ri->rk.rd = bi->extra->vnc.import.rd;
+      /*
+       * If there is an auxiliary IP address (L2 can have it), copy it
+       */
+      if (bi->extra->vnc.import.aux_prefix.family)
+        {
+          ri->rk.aux_prefix = bi->extra->vnc.import.aux_prefix;
+        }
+
       if (rfapiGetUnAddrOfVpnBi (bi, &ri->un))
         {
           rfapi_info_free (ri);
@@ -1492,99 +1729,13 @@ rfapiRibUpdatePendingNode (
           continue;
         }
 
+      rfapiRibBi2Ri(bi, ri, lifetime);
+
       if (!pn->info)
         {
           pn->info = list_new ();
-          ((struct list *) (pn->info))->del =
-            (void (*)(void *)) rfapi_info_free;
+          ((struct list *)(pn->info))->del = (void (*)(void *))rfapi_info_free;
           route_lock_node (pn);
-        }
-
-      ri->cost = rfapiRfpCost (bi->attr);
-      ri->lifetime = lifetime;
-
-      /* This loop based on rfapiRouteInfo2NextHopEntry() */
-      for (pEncap = bi->attr->extra->vnc_subtlvs; pEncap;
-           pEncap = pEncap->next)
-        {
-
-          struct bgp_tea_options *hop;
-
-          switch (pEncap->type)
-            {
-            case BGP_VNC_SUBTLV_TYPE_LIFETIME:
-              /* use configured lifetime, not attr lifetime */
-              break;
-
-            case BGP_VNC_SUBTLV_TYPE_RFPOPTION:
-              hop = XCALLOC (MTYPE_BGP_TEA_OPTIONS,
-                             sizeof (struct bgp_tea_options));
-              assert (hop);
-              hop->type = pEncap->value[0];
-              hop->length = pEncap->value[1];
-              hop->value = XCALLOC (MTYPE_BGP_TEA_OPTIONS_VALUE,
-                                    pEncap->length - 2);
-              assert (hop->value);
-              memcpy (hop->value, pEncap->value + 2, pEncap->length - 2);
-              if (hop->length > pEncap->length - 2)
-                {
-                  zlog_warn ("%s: VNC subtlv length mismatch: "
-                             "RFP option says %d, attr says %d "
-                             "(shrinking)",
-                             __func__, hop->length, pEncap->length - 2);
-                  hop->length = pEncap->length - 2;
-                }
-              hop->next = ri->tea_options;
-              ri->tea_options = hop;
-              break;
-
-            default:
-              break;
-            }
-        }
-
-      rfapi_un_options_free (ri->un_options);   /* maybe free old version */
-      ri->un_options = rfapi_encap_tlv_to_un_option (bi->attr);
-
-      /*
-       * VN options
-       */
-      if (bi->extra && 
-          decode_rd_type(bi->extra->vnc.import.rd.val) == RD_TYPE_VNC_ETH)
-        {
-          /* ethernet route */
-
-          struct rfapi_vn_option *vo;
-
-          vo =
-            XCALLOC (MTYPE_RFAPI_VN_OPTION, sizeof (struct rfapi_vn_option));
-          assert (vo);
-
-          vo->type = RFAPI_VN_OPTION_TYPE_L2ADDR;
-
-          memcpy (&vo->v.l2addr.macaddr, &it_node->p.u.prefix_eth.octet,
-                  ETHER_ADDR_LEN);
-          if (bi->attr && bi->attr->extra)
-            {
-              (void) rfapiEcommunityGetLNI (bi->attr->extra->ecommunity,
-                                            &vo->v.l2addr.logical_net_id);
-            }
-
-          /* local_nve_id comes from RD */
-          vo->v.l2addr.local_nve_id = bi->extra->vnc.import.rd.val[1];
-
-          /* label comes from MP_REACH_NLRI label */
-          vo->v.l2addr.label = decode_label (bi->extra->tag);
-
-          ri->vn_options = vo;
-        }
-
-      /*
-       * If there is an auxiliary IP address (L2 can have it), copy it
-       */
-      if (bi && bi->extra && bi->extra->vnc.import.aux_prefix.family)
-        {
-          ri->rk.aux_prefix = bi->extra->vnc.import.aux_prefix;
         }
 
       listnode_add ((struct list *) (pn->info), ri);
@@ -1652,139 +1803,78 @@ rfapiRibUpdatePendingNodeSubtree (
     }
 }
 
-
-
-struct rfapi_next_hop_entry *
-rfapiRibFTDFilterRecent (
-  struct bgp			*bgp,
+/*
+ * RETURN VALUE
+ *
+ *	0	allow prefix to be included in response
+ *	!0	don't allow prefix to be included in response
+ */
+int
+rfapiRibFTDFilterRecentPrefix(
   struct rfapi_descriptor	*rfd,
-  struct prefix			*pfx_target,      /* target expressed as pfx */
-  struct rfapi_next_hop_entry	*response)
+  struct route_node             *it_rn,                /* import table node */
+  struct prefix                 *pfx_target_original)  /* query target */
 {
-  struct rfapi_next_hop_entry *nhp;
-  struct rfapi_next_hop_entry *nhp_next;
-  time_t last_allowed_time;
-  struct rfapi_next_hop_entry *head = NULL;
-  struct rfapi_next_hop_entry *tail = NULL;
-  int use_eth_resolution = 0;
+  struct bgp			*bgp = rfd->bgp;
+  afi_t                         afi = family2afi(it_rn->p.family);
+  time_t                        prefix_time;
+  struct route_node             *trn;
 
+  /*
+   * Not in FTD mode, so allow prefix
+   */
   if (bgp->rfapi_cfg->rfp_cfg.download_type != RFAPI_RFP_DOWNLOAD_FULL)
-    return response;
+    return 0;
 
-  if (pfx_target->family == AF_ETHERNET)
+  /*
+   * TBD
+   * This matches behavior of now-obsolete rfapiRibFTDFilterRecent(),
+   * but we need to decide if that is correct.
+   */
+  if (it_rn->p.family == AF_ETHERNET)
+    return 0;
+
+#if DEBUG_FTD_FILTER_RECENT
+  {
+    char   buf_pfx[BUFSIZ];
+
+    prefix2str(&it_rn->p, buf_pfx, BUFSIZ);
+    zlog_debug("%s: prefix %s", __func__, buf_pfx);
+  }
+#endif
+
+  /*
+   * prefix covers target address, so allow prefix
+   */
+  if (prefix_match (&it_rn->p, pfx_target_original))
     {
-      use_eth_resolution = 1;
+#if DEBUG_FTD_FILTER_RECENT
+      zlog_debug("%s: prefix covers target, allowed", __func__);
+#endif
+      return 0;
     }
 
-  last_allowed_time =
-    bgp_clock () - bgp->rfapi_cfg->rfp_cfg.ftd_advertisement_interval;
+  /*
+   * check this NVE's timestamp for this prefix
+   */
+  trn = route_node_get (rfd->rsp_times[afi], &it_rn->p);  /* locks trn */
+  prefix_time = (time_t) trn->info;
+  if (trn->lock > 1)
+    route_unlock_node (trn);
 
-  zlog_debug ("%s: filtering response=%p", __func__, response);
+#if DEBUG_FTD_FILTER_RECENT
+  zlog_debug("%s: last sent time %lu, last allowed time %lu",
+    __func__, prefix_time, rfd->ftd_last_allowed_time);
+#endif
 
-  for (nhp = response; nhp; nhp = nhp_next)
-    {
+  /*
+   * haven't sent this prefix, which doesn't cover target address,
+   * to NVE since ftd_advertisement_interval, so OK to send now.
+   */
+  if (prefix_time <= rfd->ftd_last_allowed_time)
+    return 0;
 
-      struct prefix	pfx;
-      afi_t		afi;
-      struct route_node	*trn;
-      time_t		prefix_time;
-      int		allowed = 0;
-
-      /* save in case we delete nhp */
-      nhp_next = nhp->next;
-
-      if (nhp->lifetime == RFAPI_REMOVE_RESPONSE_LIFETIME)
-        {
-          /*
-           * weird, shouldn't happen
-           */
-          zlog_debug
-            ("%s: got nhp->lifetime == RFAPI_REMOVE_RESPONSE_LIFETIME",
-             __func__);
-          continue;
-        }
-
-      if (use_eth_resolution)
-        {
-          /*
-	   * get the prefix of the ethernet address in the L2 option
-	   */
-          int				found = 0;
-	  struct rfapi_vn_option	*p;
-
-	  for (p = nhp->vn_options; p; p = p->next)
-	    {
-	      if (RFAPI_VN_OPTION_TYPE_L2ADDR == p->type)
-		{
-		  rfapiL2o2Qprefix(&p->v.l2addr, &pfx);
-		  found = 1;
-		  break;
-		}
-	    }
-          if (!found)
-            {
-              /*
-               * not supposed to happen
-               */
-              zlog_debug ("%s: missing L2 info", __func__);
-              continue;
-            }
-
-          afi = AFI_ETHER;
-        }
-      else
-        {
-          rfapiRprefix2Qprefix (&nhp->prefix, &pfx);
-          afi = family2afi (pfx.family);
-        }
-
-      /*
-       * To be included in response, the prefix must either not have
-       * been sent recently, or it must include the target address
-       */
-      if (prefix_match (&pfx, pfx_target))
-        {
-          ++allowed;
-        }
-      else
-        {
-          /*
-           * check this NVE's timestamp for this prefix
-           */
-          trn = route_node_get (rfd->rsp_times[afi], &pfx);     /* locks trn */
-          prefix_time = (time_t) trn->info;
-          if (trn->lock > 1)
-            route_unlock_node (trn);
-
-          if (prefix_time <= last_allowed_time)
-            ++allowed;
-        }
-
-
-      if (allowed)
-        {
-          if (tail)
-            (tail)->next = nhp;
-          tail = nhp;
-          if (!head)
-            {
-              head = nhp;
-            }
-        }
-      else
-        {
-          rfapiFreeRfapiUnOptionChain (nhp->un_options);
-          nhp->un_options = NULL;
-          rfapiFreeRfapiVnOptionChain (nhp->vn_options);
-          nhp->vn_options = NULL;
-
-          XFREE (MTYPE_RFAPI_NEXTHOP, nhp);
-          nhp = NULL;
-        }
-    }
-  if (tail)
-    tail->next = NULL;
-  return head;
+  return 1;
 }
 
 /*
@@ -2244,6 +2334,7 @@ print_rib_sl (
       char str_lifetime[BUFSIZ];
       char str_age[BUFSIZ];
       char *p;
+      char str_rd[BUFSIZ];
 
       ++routes_displayed;
 
@@ -2269,10 +2360,17 @@ print_rib_sl (
                             str_age, BUFSIZ);
       }
 #endif
-      fp (out, " %c %-20s %-15s %-15s %-4u %-8s %-8s%s",
+
+    str_rd[0] = 0;	/* start empty */
+#if DEBUG_RIB_SL_RD
+    str_rd[0] = ' ';
+    prefix_rd2str(&ri->rk.rd, str_rd+1, BUFSIZ-1);
+#endif
+
+      fp (out, " %c %-20s %-15s %-15s %-4u %-8s %-8s%s%s",
           deleted ? 'r' : ' ',
           *printedprefix ? "" : str_pfx,
-          str_vn, str_un, ri->cost, str_lifetime, str_age, VTY_NEWLINE);
+          str_vn, str_un, ri->cost, str_lifetime, str_age, str_rd, VTY_NEWLINE);
 
       if (!*printedprefix)
         *printedprefix = 1;
