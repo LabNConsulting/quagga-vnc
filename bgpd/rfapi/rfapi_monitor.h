@@ -65,9 +65,11 @@ struct rfapi_monitor_eth
  * This is referenced by the "aggregate" field of a route node
  * in an RFAPI import table.
  *
- * TBD: figure out the way we should node lock/unlock.
+ * node lock/unlock:
  *	- one lock increment for this structure itself
  *	- one lock per chained struct rfapi_monitor_vpn
+ *	- one lock for the mon_eth skiplist itself
+ *	- one lock per mon_eth skiplist entry
  *	- one lock for the ext skiplist itself
  *	- one lock for each ext skiplist entry
  *		remember to free skiplist when freeing rfapi_it_extra

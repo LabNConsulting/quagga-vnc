@@ -2620,7 +2620,7 @@ done:
    */
   if (!wcb->node->info)
     {
-      /* see if the struct rfapi_it_extra is emopty and can be freed */
+      /* see if the struct rfapi_it_extra is empty and can be freed */
       rfapiMonitorExtraPrune (SAFI_MPLS_VPN, wcb->node);
       vnc_direct_bgp_del_prefix (bgp, wcb->import_table, wcb->node);
       vnc_zebra_del_prefix (bgp, wcb->import_table, wcb->node);

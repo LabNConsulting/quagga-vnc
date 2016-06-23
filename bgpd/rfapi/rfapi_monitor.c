@@ -52,6 +52,7 @@
 
 #define DEBUG_L2_EXTRA 0
 #define DEBUG_DUP_CHECK 0
+#define DEBUG_ETH_SL 0
 
 static void
 rfapiMonitorTimerRestart (struct rfapi_monitor_vpn *m);
@@ -64,6 +65,40 @@ rfapiMonitorEthTimerRestart (struct rfapi_monitor_eth *m);
  */
 static void
 rfapiMonitorEthDetachImport (struct bgp *bgp, struct rfapi_monitor_eth *mon);
+
+#if DEBUG_ETH_SL
+/*
+ * Debug function, special case
+ */
+void
+rfapiMonitorEthSlCheck(
+    struct route_node	*rn,
+    const char		*tag1,
+    const char		*tag2)
+{
+    struct route_node      *rn_saved = NULL;
+    static struct skiplist *sl_saved = NULL;
+    struct skiplist        *sl;
+
+    if (!rn)
+	return;
+
+    if (rn_saved && (rn != rn_saved))
+	return;
+
+    if (!rn_saved)
+	rn_saved = rn;
+
+    sl = RFAPI_MONITOR_ETH(rn);
+    if (sl || sl_saved)
+      {
+	zlog_debug("%s[%s%s]: rn=%p, rn->lock=%d, old sl=%p, new sl=%p",
+	    __func__, (tag1? tag1: ""), (tag2? tag2: ""), rn, rn->lock,
+	    sl_saved, sl);
+	sl_saved = sl;
+      }
+}
+#endif
 
 /*
  * Debugging function that aborts when it finds monitors whose
@@ -219,6 +254,16 @@ rfapiMonitorExtraFlush (safi_t safi, struct route_node *rn)
           hie->u.vpn.idx_rd = NULL;
           route_unlock_node (rn);
         }
+      if (hie->u.vpn.mon_eth)
+        {
+          while (!skiplist_delete_first (hie->u.vpn.mon_eth))
+            {
+              route_unlock_node (rn);
+            }
+          skiplist_free (hie->u.vpn.mon_eth);
+          hie->u.vpn.mon_eth = NULL;
+          route_unlock_node (rn);
+        }
       break;
 
     default:
@@ -255,6 +300,14 @@ rfapiMonitorExtraPrune (safi_t safi, struct route_node *rn)
     case SAFI_MPLS_VPN:
       if (hie->u.vpn.v)
         return;
+      if (hie->u.vpn.mon_eth)
+	{
+	  if (skiplist_count (hie->u.vpn.mon_eth))
+	    return;
+          skiplist_free (hie->u.vpn.mon_eth);
+          hie->u.vpn.mon_eth = NULL;
+          route_unlock_node (rn);	/* uncount skiplist */
+        }
       if (hie->u.vpn.e.source)
         {
           if (skiplist_count (hie->u.vpn.e.source))
@@ -269,6 +322,14 @@ rfapiMonitorExtraPrune (safi_t safi, struct route_node *rn)
             return;
           skiplist_free (hie->u.vpn.idx_rd);
           hie->u.vpn.idx_rd = NULL;
+          route_unlock_node (rn);
+        }
+      if (hie->u.vpn.mon_eth)
+        {
+          if (skiplist_count (hie->u.vpn.mon_eth))
+            return;
+          skiplist_free (hie->u.vpn.mon_eth);
+          hie->u.vpn.mon_eth = NULL;
           route_unlock_node (rn);
         }
       break;
@@ -860,20 +921,18 @@ rfapiMonitorItNodeChanged (
   struct route_node		*it_node,
   struct rfapi_monitor_vpn	*monitor_list) /* for base it node, NULL=all */
 {
-  struct skiplist *nves_seen;
+  struct skiplist   *nves_seen;
   struct route_node *rn = it_node;
-  struct prefix pfx_vn;
-  struct bgp *bgp = bgp_get_default ();
-  afi_t afi = family2afi (rn->p.family);
+  struct bgp        *bgp = bgp_get_default ();
+  afi_t             afi = family2afi (rn->p.family);
 #if DEBUG_L2_EXTRA
-  char buf_prefix[BUFSIZ];
+  char              buf_prefix[BUFSIZ];
 #endif
 
   assert (bgp);
   assert (import_table);
 
-  nves_seen =
-    skiplist_new (0, vnc_prefix_cmp, (void (*)(void *)) prefix_free);
+  nves_seen = skiplist_new (0, NULL, NULL);
 
 #if DEBUG_L2_EXTRA
   prefix2str (&it_node->p, buf_prefix, BUFSIZ);
@@ -891,28 +950,24 @@ rfapiMonitorItNodeChanged (
       if ((sl = RFAPI_MONITOR_ETH (rn)))
         {
 
-          for (cursor = NULL, rc =
-               skiplist_next (sl, NULL, (void **) &m, (void **) &cursor); !rc;
-               rc = skiplist_next (sl, NULL, (void **) &m, (void **) &cursor))
+          for (cursor = NULL,
+            rc = skiplist_next (sl, NULL, (void **) &m, (void **) &cursor);
+            !rc;
+            rc = skiplist_next (sl, NULL, (void **) &m, (void **) &cursor))
             {
 
-              assert (!rfapiRaddr2Qprefix (&m->rfd->vn_addr, &pfx_vn));
-              if (skiplist_search (nves_seen, &pfx_vn, NULL))
+              if (skiplist_search (nves_seen, m->rfd, NULL))
                 {
-                  struct prefix *p = prefix_new ();
-
                   /*
-                   * Haven't dont this NVE yet. Add to "seen" list.
+                   * Haven't done this NVE yet. Add to "seen" list.
                    */
-                  *p = pfx_vn;
-                  assert (!skiplist_insert (nves_seen, p, p));
+                  assert (!skiplist_insert (nves_seen, m->rfd, NULL));
 
                   /*
                    * update its RIB
                    */
-                  rfapiRibUpdatePendingNode (bgp, m->rfd, import_table,
-                                             it_node,
-                                             m->rfd->response_lifetime);
+                  rfapiRibUpdatePendingNode(bgp, m->rfd, import_table,
+                    it_node, m->rfd->response_lifetime);
                 }
             }
         }
@@ -953,16 +1008,12 @@ rfapiMonitorItNodeChanged (
                   /* shouldn't happen, but be safe */
                   continue;
                 }
-              assert (!rfapiRaddr2Qprefix (&m->rfd->vn_addr, &pfx_vn));
-              if (skiplist_search (nves_seen, &pfx_vn, NULL))
+              if (skiplist_search (nves_seen, m->rfd, NULL))
                 {
-                  struct prefix *p = prefix_new ();
-
                   /*
-                   * Haven't dont this NVE yet. Add to "seen" list.
+                   * Haven't done this NVE yet. Add to "seen" list.
                    */
-                  *p = pfx_vn;
-                  assert (!skiplist_insert (nves_seen, p, p));
+                  assert (!skiplist_insert (nves_seen, m->rfd, NULL));
 
                   {
                     char buf_attach_pfx[BUFSIZ];
@@ -978,9 +1029,8 @@ rfapiMonitorItNodeChanged (
                   /*
                    * update its RIB
                    */
-                  rfapiRibUpdatePendingNode (bgp, m->rfd, import_table,
-                                             it_node,
-                                             m->rfd->response_lifetime);
+                  rfapiRibUpdatePendingNode(bgp, m->rfd, import_table,
+                    it_node, m->rfd->response_lifetime);
                 }
             }
           rn = rn->parent;
@@ -1006,16 +1056,12 @@ rfapiMonitorItNodeChanged (
 #if DEBUG_L2_EXTRA
           zlog_debug ("%s: checking eth0 mon=%p", __func__, e);
 #endif
-          assert (!rfapiRaddr2Qprefix (&e->rfd->vn_addr, &pfx_vn));
-          if (skiplist_search (nves_seen, &pfx_vn, NULL))
+          if (skiplist_search (nves_seen, e->rfd, NULL))
             {
-              struct prefix *p = prefix_new ();
-
               /*
-               * Haven't dont this NVE yet. Add to "seen" list.
+               * Haven't done this NVE yet. Add to "seen" list.
                */
-              *p = pfx_vn;
-              assert (!skiplist_insert (nves_seen, p, p));
+              assert (!skiplist_insert (nves_seen, e->rfd, NULL));
 
               /*
                * update its RIB
@@ -1024,7 +1070,7 @@ rfapiMonitorItNodeChanged (
               zlog_debug ("%s: found L2 all-routes monitor %p", __func__, e);
 #endif
               rfapiRibUpdatePendingNode (bgp, e->rfd, import_table, it_node,
-                                         e->rfd->response_lifetime);
+                e->rfd->response_lifetime);
             }
         }
     }
@@ -1037,22 +1083,18 @@ rfapiMonitorItNodeChanged (
        */
       for (m = import_table->vpn0_queries[afi]; m; m = m->next)
         {
-          assert (!rfapiRaddr2Qprefix (&m->rfd->vn_addr, &pfx_vn));
-          if (skiplist_search (nves_seen, &pfx_vn, NULL))
+          if (skiplist_search (nves_seen, m->rfd, NULL))
             {
-              struct prefix *p = prefix_new ();
-
               /*
-               * Haven't dont this NVE yet. Add to "seen" list.
+               * Haven't done this NVE yet. Add to "seen" list.
                */
-              *p = pfx_vn;
-              assert (!skiplist_insert (nves_seen, p, p));
+              assert (!skiplist_insert (nves_seen, m->rfd, NULL));
 
               /*
                * update its RIB
                */
               rfapiRibUpdatePendingNode (bgp, m->rfd, import_table, it_node,
-                                         m->rfd->response_lifetime);
+                m->rfd->response_lifetime);
             }
         }
     }
@@ -1199,7 +1241,7 @@ rfapiMonitorEthAttachImport (
   if (rn == NULL)
     {
 #if DEBUG_L2_EXTRA
-      zlog_debug ("%s: rn is null!", __func__, mon);
+      zlog_debug ("%s: rn is null!", __func__);
 #endif
       return;
     }
@@ -1211,15 +1253,19 @@ rfapiMonitorEthAttachImport (
   if (!sl)
     {
       sl = RFAPI_MONITOR_ETH_W_ALLOC (rn) = skiplist_new (0, NULL, NULL);
+      route_lock_node(rn);	/* count skiplist mon_eth */
     }
 
 #if DEBUG_L2_EXTRA
-  zlog_debug ("%s: rn=%p, sl=%p, attaching eth mon %p", __func__, rn, sl,
-              mon);
+  zlog_debug ("%s: rn=%p, rn->lock=%d, sl=%p, attaching eth mon %p",
+    __func__, rn, rn->lock, sl, mon);
 #endif
 
   rc = skiplist_insert (sl, (void *) mon, (void *) mon);
   assert (!rc);
+
+  /* count eth monitor */
+  route_lock_node(rn);
 }
 
 /*
@@ -1327,14 +1373,17 @@ rfapiMonitorEthDetachImport (
    */
   sl = RFAPI_MONITOR_ETH (rn);
 #if DEBUG_L2_EXTRA
-  zlog_debug ("%s: rn=%p, sl=%p, pfx=%s, LNI=%d, detaching eth mon %p",
-              __func__, rn, sl, buf_prefix, mon->logical_net_id, mon);
+  zlog_debug ("%s: it=%p, rn=%p, rn->lock=%d, sl=%p, pfx=%s, LNI=%d, detaching eth mon %p",
+              __func__, it, rn, rn->lock, sl, buf_prefix, mon->logical_net_id, mon);
 #endif
   assert (sl);
 
 
   rc = skiplist_delete (sl, (void *) mon, (void *) mon);
   assert (!rc);
+
+  /* uncount eth monitor */
+  route_unlock_node(rn);
 }
 
 struct route_node *
@@ -1344,12 +1393,12 @@ rfapiMonitorEthAdd (
   struct ethaddr		*macaddr,
   uint32_t			logical_net_id)
 {
-  int rc;
-  struct rfapi_monitor_eth mon_buf;
-  struct rfapi_monitor_eth *val;
-  struct rfapi_import_table *it;
-  struct route_node *rn = NULL;
-  struct prefix pfx_mac_buf;
+  int                           rc;
+  struct rfapi_monitor_eth      mon_buf;
+  struct rfapi_monitor_eth      *val;
+  struct rfapi_import_table     *it;
+  struct route_node             *rn = NULL;
+  struct prefix                 pfx_mac_buf;
 
   if (!rfd->mon_eth)
     {
@@ -1507,12 +1556,12 @@ void
 rfapiMonitorCallbacksOff (struct bgp *bgp)
 {
   struct rfapi_import_table *it;
-  afi_t afi;
-  struct route_table *rt;
-  struct route_node *rn;
-  void *cursor;
-  int rc;
-  struct rfapi *h = bgp->rfapi;
+  afi_t                     afi;
+  struct route_table        *rt;
+  struct route_node         *rn;
+  void                      *cursor;
+  int                       rc;
+  struct rfapi              *h = bgp->rfapi;
 
   if (bgp->rfapi_cfg->flags & BGP_VNC_CONFIG_CALLBACK_DISABLE)
     {
@@ -1571,31 +1620,39 @@ rfapiMonitorCallbacksOff (struct bgp *bgp)
    * detach monitors from import Eth tables. The monitors
    * will still be linked in per-nve monitor lists.
    */
+
+  /*
+   * Loop over ethernet import tables
+   */
   for (cursor = NULL,
        rc = skiplist_next (h->import_mac, NULL, (void **) &it, &cursor);
        !rc; rc = skiplist_next (h->import_mac, NULL, (void **) &it, &cursor))
     {
-
-      struct rfapi_monitor_vpn *m;
-      struct rfapi_monitor_vpn *next;
       struct rfapi_monitor_eth *e;
       struct rfapi_monitor_eth *enext;
 
+      /*
+       * The actual route table
+       */
       rt = it->imported_vpn[AFI_ETHER];
 
+      /* 
+       * Find non-0 monitors (i.e., actual addresses, not FTD monitors)
+       */
       for (rn = route_top (rt); rn; rn = route_next (rn))
         {
-          m = RFAPI_MONITOR_VPN (rn);
-          if (RFAPI_MONITOR_VPN (rn))
-            RFAPI_MONITOR_VPN_W_ALLOC (rn) = NULL;
-          for (; m; m = next)
-            {
-              next = m->next;
-              m->next = NULL;   /* gratuitous safeness */
-              route_unlock_node (rn);   /* uncount */
-            }
+	  struct skiplist *sl;
+
+	  sl = RFAPI_MONITOR_ETH (rn);
+	  while (!skiplist_delete_first(sl))
+	    {
+              route_unlock_node (rn);   /* uncount monitor */
+	    }
         }
 
+      /*
+       * Find 0-monitors (FTD queries)
+       */
       for (e = it->eth0_queries; e; e = enext)
         {
 #if DEBUG_L2_EXTRA
