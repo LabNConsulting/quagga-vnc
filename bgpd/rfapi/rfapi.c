@@ -2857,7 +2857,7 @@ rfapi_register (
               ecom_value.val[5] = (l2o->logical_net_id >> 16) & 0xff;
               ecom_value.val[6] = (l2o->logical_net_id >> 8) & 0xff;
               ecom_value.val[7] = (l2o->logical_net_id >> 0) & 0xff;
-              rtlist = ecommunity_dup (rfd->rt_export_list);
+              rtlist = ecommunity_new();
               ecommunity_add_val (rtlist, &ecom_value);
             }
         }

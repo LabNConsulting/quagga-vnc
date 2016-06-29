@@ -291,7 +291,7 @@ to NVE Groups.
 
 @deffn {VNC} {rd @var{route-distinguisher}}
 Specify the route distinguisher for routes advertised via BGP
-VPNs.  The route distinguisher must be in one of three forms:
+VPNs.  The route distinguisher must be in one of these forms:
 @itemize
 @item @var{IPv4-address}:@var{two-byte-integer}
 @item @var{four-byte-autonomous-system-number}:@var{two-byte-integer}
@@ -474,10 +474,10 @@ Add or remove labels associated with the group.  @var{label-list} is a
 space separated list of label values in the range of 0-1048575.
 @end deffn
 
-@deffn {VNC} {rt import @var{rt-list}} {}
-@deffnx {VNC} {rt export @var{rt-list}} {}
-@deffnx {VNC} {rt both @var{rt-list}} {}
-Specify route target import and export lists associated with the
+@deffn {VNC} {rt import @var{rt-target}} {}
+@deffnx {VNC} {rt export @var{rt-target}} {}
+@deffnx {VNC} {rt both @var{rt-target}} {}
+Specify the route target import and export value associated with the
 group. A complete definition of these parameters is given above,
 @pxref{VNC NVE Group Configuration}.
 @end deffn

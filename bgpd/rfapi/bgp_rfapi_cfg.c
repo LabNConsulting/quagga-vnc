@@ -3720,12 +3720,12 @@ DEFUN (vnc_l2_group_no_labels,
 
 DEFUN (vnc_l2_group_rt,
        vnc_l2_group_rt_cmd,
-       "rt (both|export|import) .RTLIST",
+       "rt (both|export|import) ASN:nn_or_IP-address:nn",
        "Specify route targets\n"
        "Export+import filters\n"
        "Export filters\n"
        "Import filters\n"
-       "Space separated route target list (A.B.C.D:MN|EF:OPQR|GHJK:MN)\n")
+       "A route target\n")
 {
   struct rfapi_l2_group_cfg *rfg;
   struct bgp *bgp = vty->index;
