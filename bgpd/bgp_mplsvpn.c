@@ -123,6 +123,17 @@ decode_rd_ip (u_char *pnt, struct rd_ip *rd_ip)
   rd_ip->val |= (u_int16_t) *pnt;
 }
 
+#if ENABLE_BGP_VNC
+/* type == RD_TYPE_VNC_ETH */
+void
+decode_rd_vnc_eth (u_char *pnt, struct rd_vnc_eth *rd_vnc_eth)
+{
+  rd_vnc_eth->type = RD_TYPE_VNC_ETH;
+  rd_vnc_eth->local_nve_id = pnt[1];
+  memcpy (rd_vnc_eth->macaddr.octet, pnt + 2, ETHER_ADDR_LEN);
+}
+#endif
+
 int
 bgp_nlri_parse_vpn (struct peer *peer, struct attr *attr, 
                     struct bgp_nlri *packet)
@@ -509,6 +520,9 @@ show_adj_route_vpn (struct vty *vty, struct peer *peer, struct prefix_rd *prd)
                     u_int16_t type;
                     struct rd_as rd_as;
                     struct rd_ip rd_ip;
+#if ENABLE_BGP_VNC
+                    struct rd_vnc_eth rd_vnc_eth;
+#endif
                     u_char *pnt;
 
                     pnt = rn->p.u.val;
@@ -522,6 +536,10 @@ show_adj_route_vpn (struct vty *vty, struct peer *peer, struct prefix_rd *prd)
                       decode_rd_as4 (pnt + 2, &rd_as);
                     else if (type == RD_TYPE_IP)
                       decode_rd_ip (pnt + 2, &rd_ip);
+#if ENABLE_BGP_VNC
+                    else if (type == RD_TYPE_VNC_ETH)
+                      decode_rd_vnc_eth (pnt, &rd_vnc_eth);
+#endif
 
                     vty_out (vty, "Route Distinguisher: ");
 
@@ -531,6 +549,17 @@ show_adj_route_vpn (struct vty *vty, struct peer *peer, struct prefix_rd *prd)
                       vty_out (vty, "%u:%d", rd_as.as, rd_as.val);
                     else if (type == RD_TYPE_IP)
                       vty_out (vty, "%s:%d", inet_ntoa (rd_ip.ip), rd_ip.val);
+#if ENABLE_BGP_VNC
+                    else if (type == RD_TYPE_VNC_ETH)
+                      vty_out (vty, "%u:%02x:%02x:%02x:%02x:%02x:%02x", 
+                               rd_vnc_eth.local_nve_id, 
+                               rd_vnc_eth.macaddr.octet[0],
+                               rd_vnc_eth.macaddr.octet[1],
+                               rd_vnc_eth.macaddr.octet[2],
+                               rd_vnc_eth.macaddr.octet[3],
+                               rd_vnc_eth.macaddr.octet[4],
+                               rd_vnc_eth.macaddr.octet[5]);
+#endif
 
                     vty_out (vty, "%s", VTY_NEWLINE);
                     rd_header = 0;
@@ -635,6 +664,9 @@ bgp_show_mpls_vpn(
 		    u_int16_t type;
 		    struct rd_as rd_as;
 		    struct rd_ip rd_ip;
+#if ENABLE_BGP_VNC
+                    struct rd_vnc_eth rd_vnc_eth;
+#endif
 		    u_char *pnt;
 
 		    pnt = rn->p.u.val;
@@ -648,6 +680,10 @@ bgp_show_mpls_vpn(
 		      decode_rd_as4 (pnt + 2, &rd_as);
 		    else if (type == RD_TYPE_IP)
 		      decode_rd_ip (pnt + 2, &rd_ip);
+#if ENABLE_BGP_VNC
+                    else if (type == RD_TYPE_VNC_ETH)
+                      decode_rd_vnc_eth (pnt, &rd_vnc_eth);
+#endif
 
 		    vty_out (vty, "Route Distinguisher: ");
 
@@ -657,6 +693,17 @@ bgp_show_mpls_vpn(
 		      vty_out (vty, "as4 %u:%d", rd_as.as, rd_as.val);
 		    else if (type == RD_TYPE_IP)
 		      vty_out (vty, "ip %s:%d", inet_ntoa (rd_ip.ip), rd_ip.val);
+#if ENABLE_BGP_VNC
+                    else if (type == RD_TYPE_VNC_ETH)
+                      vty_out (vty, "%u:%02x:%02x:%02x:%02x:%02x:%02x", 
+                               rd_vnc_eth.local_nve_id, 
+                               rd_vnc_eth.macaddr.octet[0],
+                               rd_vnc_eth.macaddr.octet[1],
+                               rd_vnc_eth.macaddr.octet[2],
+                               rd_vnc_eth.macaddr.octet[3],
+                               rd_vnc_eth.macaddr.octet[4],
+                               rd_vnc_eth.macaddr.octet[5]);
+#endif
 		  
 		    vty_out (vty, "%s", VTY_NEWLINE);		  
 		    rd_header = 0;
