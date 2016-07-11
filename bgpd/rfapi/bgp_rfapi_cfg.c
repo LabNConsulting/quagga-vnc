@@ -542,7 +542,7 @@ DEFUN (vnc_defaults_responselifetime,
 
   if (!strcmp (argv[0], "infinite"))
     {
-      rspint = BGP_VNC_LIFETIME_INFINITE;
+      rspint = RFAPI_INFINITE_LIFETIME;
     }
   else
     {
@@ -1122,7 +1122,7 @@ DEFUN (vnc_redistribute_lifetime,
 
   if (!strcmp (argv[0], "infinite"))
     {
-      bgp->rfapi_cfg->redist_lifetime = BGP_VNC_LIFETIME_INFINITE;
+      bgp->rfapi_cfg->redist_lifetime = RFAPI_INFINITE_LIFETIME;
     }
   else
     {
@@ -3434,7 +3434,7 @@ DEFUN (vnc_nve_group_responselifetime,
 
   if (!strcmp (argv[0], "infinite"))
     {
-      rspint = BGP_VNC_LIFETIME_INFINITE;
+      rspint = RFAPI_INFINITE_LIFETIME;
     }
   else
     {

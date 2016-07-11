@@ -1246,7 +1246,7 @@ rfapiPrintRemoteRegBi (
   /* Lifetime */
   /* NB rfapiGetVncLifetime sets infinite value when returning !0 */
   if (rfapiGetVncLifetime (bi->attr, &lifetime) ||
-      (lifetime == BGP_VNC_LIFETIME_INFINITE))
+      (lifetime == RFAPI_INFINITE_LIFETIME))
     {
 
       fp (out, "%-10s ", "infinite");

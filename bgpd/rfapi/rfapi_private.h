@@ -280,9 +280,6 @@ struct rfapi
     ((prefix)->family == AF_INET)? ((prefix)->prefixlen == 32):		\
     (((prefix)->family == AF_INET6)? ((prefix)->prefixlen == 128): 0) )
 
-/* These should go in a file such as vnc.h */
-#define BGP_VNC_LIFETIME_INFINITE	0xffffffff
-
 extern void
 rfapiQprefix2Rprefix (
   struct prefix			*qprefix,

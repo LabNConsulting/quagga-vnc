@@ -357,7 +357,7 @@ rfapiGetVncLifetime (struct attr *attr, uint32_t * lifetime)
 {
   struct bgp_attr_encap_subtlv *pEncap;
 
-  *lifetime = BGP_VNC_LIFETIME_INFINITE;        /* default to infinite */
+  *lifetime = RFAPI_INFINITE_LIFETIME;        /* default to infinite */
 
   if (attr && attr->extra)
     {

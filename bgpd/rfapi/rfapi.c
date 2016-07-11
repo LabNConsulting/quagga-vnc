@@ -805,7 +805,7 @@ add_vnc_route (
 
 
   /* Set up vnc attribute (sub-tlv for Prefix Lifetime) */
-  if (lifetime && *lifetime != BGP_VNC_LIFETIME_INFINITE)
+  if (lifetime && *lifetime != RFAPI_INFINITE_LIFETIME)
     {
       uint32_t lt;
 
@@ -3291,7 +3291,7 @@ DEFUN (debug_rfapi_register_vn_un,
 
   if (!strcmp (argv[3], "infinite"))
     {
-      lifetime = BGP_VNC_LIFETIME_INFINITE;
+      lifetime = RFAPI_INFINITE_LIFETIME;
     }
   else
     {
@@ -3380,7 +3380,7 @@ DEFUN (debug_rfapi_register_vn_un_l2o,
 
   if (!strcmp (argv[3], "infinite"))
     {
-      lifetime = BGP_VNC_LIFETIME_INFINITE;
+      lifetime = RFAPI_INFINITE_LIFETIME;
     }
   else
     {
