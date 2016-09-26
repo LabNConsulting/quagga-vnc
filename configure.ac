@@ -1250,9 +1250,11 @@ if test "${enable_bgp_vnc}" = "yes";then
   AC_DEFINE(ENABLE_BGP_VNC,1,Enable BGP VNC support)
   RFPTEST="${with_rfp_path}/rfptest"
   LIBRFP="${with_rfp_path}/librfp"
+  RFPINC="${with_rfp_path}/librfp"
 else
   RFPTEST=
   LIBRFP=
+  RFPINC="bgpd/rfp-example/librfp"
 fi
 # set 
 AM_CONDITIONAL([ENABLE_BGP_VNC], [test x${enable_bgp_vnc} = xyes])
@@ -1261,6 +1263,7 @@ AC_SUBST(DOC)
 AC_SUBST(ZEBRA)
 AC_SUBST(RFPTEST)
 AC_SUBST(LIBRFP)
+AC_SUBST(RFPINC)
 AC_SUBST(BGPD)
 AC_SUBST(RIPD)
 AC_SUBST(RIPNGD)

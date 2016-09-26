@@ -4,9 +4,9 @@ AUTOMAKE_OPTIONS = subdir-objects
 if ENABLE_BGP_VNC
 #o file to keep linker happy
 BGP_VNC_RFP_LIB=rfapi/rfapi_descriptor_rfp_utils.o @top_srcdir@/$(LIBRFP)/librfp.a 
-BGP_VNC_RFP_INC=-I@top_srcdir@/$(LIBRFP)
+BGP_VNC_RFP_INC=-I@top_srcdir@/$(RFPINC)
 BGP_VNC_RFP_HD=\
-	@top_srcdir@/$(LIBRFP)/rfp.h
+	@top_srcdir@/$(RFPINC)/rfp.h
 BGP_VNC_RFP_LD_FLAGS_FILE=@top_srcdir@/$(LIBRFP)/rfp_ld_flags
 BGP_VNC_RFP_LD_FLAGS=`if [ -e  "$(BGP_VNC_RFP_LD_FLAGS_FILE)" ] ; then cat "$(BGP_VNC_RFP_LD_FLAGS_FILE)" ; fi `
 
@@ -45,7 +45,7 @@ BGP_VNC_RFAPI_HD=rfapi/bgp_rfapi_cfg.h \
 	rfapi/vnc_export_table.h \
 	rfapi/vnc_import_bgp.h \
 	rfapi/vnc_zebra.h \
-	bgp_vnc_types.h
+	bgp_vnc_types.h $(BGP_VNC_RFP_HD)
 
 else
 BGP_VNC_RFAPI_INC=
@@ -83,7 +83,7 @@ noinst_HEADERS = \
 	bgp_ecommunity.h bgp_mplsvpn.h bgp_nexthop.h bgp_damp.h bgp_table.h \
 	bgp_advertise.h bgp_snmp.h bgp_vty.h bgp_mpath.h \
 	bgp_encap.h bgp_encap_tlv.h bgp_encap_types.h bgp_nht.h \
-	$(BGP_VNC_RFAPI_HD) $(BGP_VNC_RFP_HD)
+	$(BGP_VNC_RFAPI_HD) 
 
 bgpd_SOURCES = bgp_main.c
 bgpd_LDADD = libbgp.a  $(BGP_VNC_RFP_LIB) ../lib/libzebra.la @LIBCAP@ @LIBM@
