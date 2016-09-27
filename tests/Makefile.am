@@ -26,8 +26,7 @@ TESTS_BGPD =
 endif
 
 if ENABLE_BGP_VNC
-#o file to keep linker happy
-BGP_VNC_RFP_LIB=@top_srcdir@/bgpd/rfapi_descriptor_rfp_utils.o @top_srcdir@/$(LIBRFP)/librfp.a 
+BGP_VNC_RFP_LIB=@top_srcdir@/$(LIBRFP)/librfp.a 
 else
 BGP_VNC_RFP_LIB =
 endif
