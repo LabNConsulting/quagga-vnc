@@ -27,8 +27,8 @@
 #include <stdint.h>
 #include <netinet/in.h>
 #include <zebra.h>
-#include "vty.h"
-#include "prefix.h"
+#include "lib/vty.h"
+#include "lib/prefix.h"
 #include "../bgpd.h"
 #include "../bgp_encap_types.h"
 
