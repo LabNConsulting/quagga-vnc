@@ -53,7 +53,7 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #include "bgpd/bgp_ecommunity.h"
 #include "bgpd/bgp_vty.h"
 #if ENABLE_BGP_VNC
-#include "bgp_rfapi_cfg.h"
+# include "bgpd/rfapi/bgp_rfapi_cfg.h"
 #endif
 
 /* Memo of route-map commands.

@@ -39,12 +39,12 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #include "bgpd/bgp_debug.h"
 #include "bgpd/bgp_packet.h"
 #include "bgpd/bgp_ecommunity.h"
+#include "lib/table.h"
 #if ENABLE_BGP_VNC
-#include "table.h"
-#include "bgp_rfapi_cfg.h"
-#include "bgp_encap_types.h"
-#include "bgp_vnc_types.h"
+# include "bgpd/rfapi/bgp_rfapi_cfg.h"
 #endif
+#include "bgpd/bgp_encap_types.h"
+#include "bgpd/bgp_vnc_types.h"
 
 /* Attribute strings for logging. */
 static const struct message attr_str [] = 
