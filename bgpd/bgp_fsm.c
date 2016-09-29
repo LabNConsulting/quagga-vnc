@@ -962,12 +962,14 @@ bgp_fsm_nht_update(struct peer *peer, int valid)
 	BGP_EVENT_ADD(peer, BGP_Start);
       break;
     case Connect:
+#if 0                           /* don't want to change bgp state just because NHT completes */
       ret = bgp_connect_check(peer, 0);
       if (!ret && valid)
 	{
 	  BGP_TIMER_OFF(peer->t_connect);
 	  BGP_EVENT_ADD(peer, ConnectRetry_timer_expired);
 	}
+#endif
       break;
     case Active:
       if (valid)
