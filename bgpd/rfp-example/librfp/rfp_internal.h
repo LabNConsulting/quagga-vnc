@@ -24,6 +24,6 @@
 #define _RFP_INTERNAL_H
 #include "lib/zebra.h"
 #include "rfp.h"
-#include "rfapi.h"
+#include "bgpd/rfapi/rfapi.h"
 
 #endif /* _RFP_INTERNAL_H */
