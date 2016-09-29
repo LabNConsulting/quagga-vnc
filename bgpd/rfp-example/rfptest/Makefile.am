@@ -28,7 +28,8 @@ BGP_VNC_RFP_INC=
 RFPTEST_BIN=
 endif
 
-AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/lib -I$(top_builddir)/lib\
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/lib \
+	-I$(top_builddir) -I$(top_builddir)/lib \
 	$(BGP_VNC_RFAPI_INC) $(BGP_VNC_RFP_INC)
 
 DEFS = @DEFS@ -DSYSCONFDIR=\"$(sysconfdir)/\"
